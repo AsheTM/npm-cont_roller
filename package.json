@@ -1,13 +1,25 @@
 {
   "name": "@ashetm/cont_roller",
   "version": "1.0.2",
-  "description": "",
+  "description": "A jQuery-style chainable controller builder for Express: return data, chain the status, guard with .if().",
   "main": "index.js",
+  "files": [
+    "index.js"
+  ],
   "scripts": {
-    "build": "babel build.js -o ./index.js",
+    "build": "babel src/index.js -o ./index.js",
     "pretest": "npm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "npm test"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AsheTM/npm-cont_roller.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AsheTM/npm-cont_roller/issues"
+  },
+  "homepage": "https://github.com/AsheTM/npm-cont_roller#readme",
   "keywords": [
     "nodejs",
     "javascript",
@@ -15,10 +27,16 @@
     "controller",
     "middleware"
   ],
-  "author": "",
+  "author": "Haitham DAWOUD",
   "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "express": ">=4"
+  },
   "dependencies": {
-    "lodash": ">=4.17.19",
+    "lodash": "^4.17.21",
     "statuses": "^1.5.0"
   },
   "devDependencies": {

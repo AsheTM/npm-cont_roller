@@ -12,18 +12,6 @@ class Cont_Roller{
         this._payloadError          = { __error__: null };
         this._status                = 200;
         this._statusError           = 500;
-        /////////////////////////
-        ///// Experimentale /////
-        /////////////////////////
-        this._chain                 = [
-            // {
-            //     callback:   () => true, 
-            //     code:       200
-            // }
-        ];
-        /////////////////////////
-        /////////////////////////
-        /////////////////////////
         this._conditionalCallback   = () => true;
         this._mainCallback          = mainCallback;
         this._controller            = function(cont_roller) {
