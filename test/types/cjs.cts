@@ -11,4 +11,8 @@ c._OK();
 const e = new $.HttpError(404);
 void e.status;
 
+$.config({ errors: 'respond' }).config({ errors: 'next' });
+const mode: 'next' | 'respond' = $.config().errors;
+void mode;
+
 export = c;

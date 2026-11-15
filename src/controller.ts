@@ -6,6 +6,7 @@ import { assertStatusCode } from './status.js';
 import { createContext } from './context.js';
 import { isResult, type Result } from './result.js';
 import { createHttpError, isHttpError } from './error.js';
+import { errorMode } from './config.js';
 
 /** Builder method names; generated status names must never collide with them. */
 export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type', 'guard', 'checkBefore', 'if', 'checkAfter'] as const;
@@ -62,11 +63,16 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
 
             send(res, parts, value);
         } catch (error) {
+            // Too late to answer: let Express deal with it
+            if (res.headersSent)
+                return next(error);
             // throw $.error(...) or throw $.notFound(...) become their response
             if (isHttpError(error))
                 return send(res, mergeParts(parts, error.result.parts), error.result.body);
             if (isResult(error))
                 return send(res, mergeParts(parts, error.parts), error.body);
+            if (errorMode() === 'respond')
+                return send(res, { ...parts, status: 500 }, { error: error instanceof Error ? error.message : String(error) });
             next(error);
         }
     };
