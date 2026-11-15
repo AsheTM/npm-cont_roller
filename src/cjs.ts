@@ -1,5 +1,15 @@
 // CommonJS entry: `require('@ashetm/cont_roller')` returns `$` itself.
 // Everything is reachable as a property of `$` (`$.$`, `$.STATUSES`, ...).
+// The type re-exports become a namespace merged into `$` in index.d.cts, so CommonJS
+// TypeScript users can write `import type { Controller } from` or `$.Controller`.
 import { $ } from './dollar.js';
 
 export default $;
+
+export type { Status, StatusCode, StatusName } from './status.generated.js';
+export type { AfterCheck, AnyStatusCode, Awaitable, BeforeCheck, Data, GuardFailure, ContentType, Context, Controller, Handler, StatusMethods } from './types.js';
+export type { HeaderValue, Headers } from './response.js';
+export type { Dollar, ResultHelpers } from './dollar.js';
+export type { Result, ResultOptions } from './result.js';
+export type { Config } from './config.js';
+export type { HttpError } from './error.js';
