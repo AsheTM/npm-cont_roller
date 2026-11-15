@@ -12,4 +12,13 @@ $(async (_req, ctx) => {
 // @ts-expect-error: handler must be a function
 $('nope');
 
+$(async () => $.notFound({ error: 'x' }, { headers: { 'X-A': '1' } }));
+$(() => $.status(418)).ok();
+$(() => $.redirect('/login', 301));
+const r = $.created({ id: 1 });
+const id: number = r.body.id;
+// @ts-expect-error: unknown helper
+$.notAStatus();
+
 export default c;
+export { id };
