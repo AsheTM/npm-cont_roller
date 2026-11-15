@@ -5,8 +5,31 @@ import type { Status, StatusCode } from './status.generated.js';
 /** A value or a promise of it. */
 export type Awaitable<T> = T | Promise<T>;
 
-/** Per-request context passed to the handler (extended in later releases). */
-export interface Context {}
+/**
+ * Per-request context, second argument of the handler. Every method is chainable and
+ * only affects the current response, on top of the builder defaults.
+ *
+ * ```ts
+ * $(async (req, ctx) => {
+ *     ctx.header('X-Source', 'db').cookie('seen', '1').status(201);
+ *     return data;
+ * })
+ * ```
+ */
+export interface Context {
+    /** Sets a header for this response. */
+    header(name: string, value: HeaderValue): Context;
+    /** Sets headers for this response. */
+    header(headers: Headers): Context;
+    /** Sets a cookie for this response, same options as Express `res.cookie()`. */
+    cookie(name: string, value: unknown, options?: CookieOptions): Context;
+    /** Clears a cookie, same options as Express `res.clearCookie()`. */
+    clearCookie(name: string, options?: CookieOptions): Context;
+    /** Sets the content type for this response. */
+    type(type: ContentType): Context;
+    /** Sets the status for this response, overriding the builder's success status. */
+    status(code: AnyStatusCode): Context;
+}
 
 /** The user handler: returns the response body, sync or async. */
 export type Handler<T = unknown> = (req: Request, ctx: Context) => Awaitable<T>;

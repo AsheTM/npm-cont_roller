@@ -1,15 +1,13 @@
 import type { CookieOptions, NextFunction, Request, Response } from 'express';
-import type { Context, Controller, ControllerState, Handler } from './types.js';
+import type { Controller, ControllerState, Handler } from './types.js';
 import { addCookie, cloneParts, emptyParts, send, setHeaders, type HeaderValue, type Headers } from './response.js';
 import { STATUSES } from './status.generated.js';
+import { assertStatusCode } from './status.js';
+import { createContext } from './context.js';
 
 /** Builder method names; generated status names must never collide with them. */
 export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type'] as const;
 
-export function assertStatusCode(code: unknown): asserts code is number {
-    if (typeof code !== 'number' || !Number.isInteger(code) || code < 100 || code > 999)
-        throw new RangeError(`Invalid HTTP status code: ${String(code)}`);
-}
 
 export function createController<T>(handler: Handler<T>): Controller<T> {
     if (typeof handler !== 'function')
@@ -20,7 +18,7 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
     const middleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const parts = cloneParts(state.defaults);
-            const ctx: Context = {};
+            const ctx = createContext(parts);
             const value = await handler(req, ctx);
             send(res, parts, value);
         } catch (error) {
