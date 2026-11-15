@@ -73,10 +73,11 @@ function () {
 
           }),
               data = cont_roller._mainCallback(req, options),
-              ifGoesWrong = cont_roller._conditionalCallback(req, data),
+              // true = pass, false = send the error response (as documented)
+          passed = cont_roller._conditionalCallback(req, data),
               responseData = _objectSpread({}, data);
 
-          if (ifGoesWrong) return res.status(cont_roller._statusError).send(cont_roller._payloadError);
+          if (!passed) return res.status(cont_roller._statusError).send(cont_roller._payloadError);
           responseData.__status__ = cont_roller._status; // Fallbacks: options -> returned data -> instance defaults (data may be null or a primitive)
 
           var source = data !== null && _typeof(data) === 'object' ? data : {};
@@ -101,7 +102,7 @@ function () {
     value: function _if(conditionalCallback) {
       var self = this;
       this._conditionalCallback = _lodash["default"].isFunction(conditionalCallback) ? conditionalCallback : function () {
-        return false;
+        return true;
       };
       return {
         _401: function _401() {

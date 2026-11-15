@@ -37,10 +37,11 @@ class Cont_Roller{
                             __contentType__:    cont_roller._contentType  // String
                         }), 
                         data            = cont_roller._mainCallback(req, options), 
-                        ifGoesWrong     = cont_roller._conditionalCallback(req, data), 
+                        // true = pass, false = send the error response (as documented)
+                        passed          = cont_roller._conditionalCallback(req, data), 
                         responseData    = { ...data };
                     
-                    if(ifGoesWrong)
+                    if(!passed)
                         return res.status(cont_roller._statusError).send(cont_roller._payloadError);
                     
                     responseData.__status__         = cont_roller._status;
@@ -67,7 +68,7 @@ class Cont_Roller{
 
     if(conditionalCallback) {
         let self = this;
-        this._conditionalCallback   = _.isFunction(conditionalCallback) ? conditionalCallback : () => false;
+        this._conditionalCallback   = _.isFunction(conditionalCallback) ? conditionalCallback : () => true;
         return {
             _401:   function(errorResponse = { __error__:  'Unauthorized' }) {
                 self._statusError   = 401;
