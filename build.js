@@ -128,6 +128,9 @@ function prepareResContentType(res, contentType) {
 }
 
 function prepareResCookies(res, cookies) {
-    for(let cookie in cookies)
-        res.cookie(cookie.name, cookie.value, cookie.options || cookies.options || {});
+    if(!Array.isArray(cookies))
+        return;
+    for(const cookie of cookies)
+        if(cookie && cookie.name)
+            res.cookie(cookie.name, cookie.value, cookie.options || {});
 }

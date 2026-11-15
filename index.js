@@ -175,7 +175,28 @@ function prepareResContentType(res, contentType) {
 }
 
 function prepareResCookies(res, cookies) {
-  for (var cookie in cookies) {
-    res.cookie(cookie.name, cookie.value, cookie.options || cookies.options || {});
+  if (!Array.isArray(cookies)) return;
+  var _iteratorNormalCompletion = true;
+  var _didIteratorError = false;
+  var _iteratorError = undefined;
+
+  try {
+    for (var _iterator = cookies[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+      var cookie = _step.value;
+      if (cookie && cookie.name) res.cookie(cookie.name, cookie.value, cookie.options || {});
+    }
+  } catch (err) {
+    _didIteratorError = true;
+    _iteratorError = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion && _iterator["return"] != null) {
+        _iterator["return"]();
+      }
+    } finally {
+      if (_didIteratorError) {
+        throw _iteratorError;
+      }
+    }
   }
 }
