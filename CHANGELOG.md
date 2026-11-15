@@ -3,7 +3,7 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [1.0.2] - Unreleased
+## [1.0.2] - 2026-11-15
 
 ### Fixed
 - `require('@ashetm/cont_roller')` now returns the `$` function; `$.$` and `$.default` remain available (#7).
@@ -20,6 +20,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 - Test suite (vitest + supertest) and CI on Node 20/22/24 with Express 4 and 5 (#6).
+
+### Security
+- Dev dependencies updated; `npm audit` reports 0 vulnerabilities (#22).
 
 ## [1.0.1] - 2019-12-09
 
