@@ -59,6 +59,9 @@ The handler `(req, ctx) => value` may be sync or `async`. Its return value is th
 
 Statuses 204, 205 and 304 never carry a body.
 
+> **Strings are sent as `text/html`** (Express's default for `res.send`). When a string may contain
+> user input, set a non-HTML type to avoid XSS: `$(handler).type('text')` or `ctx.type('text')`.
+
 ## The builder: `$(handler)`
 
 Every builder method is chainable and returns the controller (the middleware) itself.
