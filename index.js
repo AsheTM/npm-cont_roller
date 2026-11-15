@@ -6,6 +6,8 @@ var _statuses = _interopRequireDefault(require("statuses"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
 function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
 
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
@@ -75,11 +77,13 @@ function () {
               responseData = _objectSpread({}, data);
 
           if (ifGoesWrong) return res.status(cont_roller._statusError).send(cont_roller._payloadError);
-          responseData.__status__ = cont_roller._status;
-          responseData.__contentType__ = options.__contentType__ || data.__contentType__ || data.contentType || contentType;
-          responseData.__headers__ = options.__headers__ || data.__headers__ || data.headers || headers;
-          responseData.__cookies__ = options.__cookies__ || data.__cookies__ || data.cookies || cookies;
-          responseData.__payload__ = data && data.__payload__ || data || cont_roller._payload || null;
+          responseData.__status__ = cont_roller._status; // Fallbacks: options -> returned data -> instance defaults (data may be null or a primitive)
+
+          var source = data !== null && _typeof(data) === 'object' ? data : {};
+          responseData.__contentType__ = options.__contentType__ || source.__contentType__ || source.contentType || cont_roller._contentType;
+          responseData.__headers__ = options.__headers__ || source.__headers__ || source.headers || cont_roller._headers;
+          responseData.__cookies__ = options.__cookies__ || source.__cookies__ || source.cookies || cont_roller._cookies;
+          responseData.__payload__ = source.__payload__ || data || cont_roller._payload || null;
           prepareRes(res, responseData);
           res.send(responseData.__payload__);
         } catch (error) {

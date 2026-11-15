@@ -44,10 +44,12 @@ class Cont_Roller{
                         return res.status(cont_roller._statusError).send(cont_roller._payloadError);
                     
                     responseData.__status__         = cont_roller._status;
-                    responseData.__contentType__    = options.__contentType__   ||  data.__contentType__    ||  data.contentType        ||  contentType;
-                    responseData.__headers__        = options.__headers__       ||  data.__headers__        ||  data.headers            ||  headers;
-                    responseData.__cookies__        = options.__cookies__       ||  data.__cookies__        ||  data.cookies            ||  cookies;
-                    responseData.__payload__        = data && data.__payload__  ||  data                    ||  cont_roller._payload    ||  null;
+                    // Fallbacks: options -> returned data -> instance defaults (data may be null or a primitive)
+                    const source = data !== null && typeof data === 'object' ? data : {};
+                    responseData.__contentType__    = options.__contentType__   ||  source.__contentType__  ||  source.contentType  ||  cont_roller._contentType;
+                    responseData.__headers__        = options.__headers__       ||  source.__headers__      ||  source.headers      ||  cont_roller._headers;
+                    responseData.__cookies__        = options.__cookies__       ||  source.__cookies__      ||  source.cookies      ||  cont_roller._cookies;
+                    responseData.__payload__        = source.__payload__        ||  data                    ||  cont_roller._payload    ||  null;
                     
                     prepareRes(res, responseData);
                     res.send(responseData.__payload__);
