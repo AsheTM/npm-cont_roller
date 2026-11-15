@@ -87,6 +87,15 @@ describe('README examples', () => {
         expect(res.body).toEqual({ error: 'db down' });
     });
 
+    it('strings are text/html by default, .type("text") makes them plain text', async () => {
+        const html = await request(express().get('/s', $(() => '<b>x</b>'))).get('/s');
+        expect(html.headers['content-type']).toMatch(/^text\/html/);
+        const text = await request(express().get('/s', $(() => '<b>x</b>').type('text'))).get('/s');
+        expect(text.headers['content-type']).toMatch(/^text\/plain/);
+        const viaCtx = await request(express().get('/s', $((_req, ctx) => { ctx.type('text'); return '<b>x</b>'; }))).get('/s');
+        expect(viaCtx.headers['content-type']).toMatch(/^text\/plain/);
+    });
+
     it('$(handler).ok() vs $.ok(body)', () => {
         const controller = $(() => 1);
         expect(controller.ok()).toBe(controller);
