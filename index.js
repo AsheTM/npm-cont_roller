@@ -1,11 +1,5 @@
 "use strict";
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.$ = $;
-exports["default"] = void 0;
-
 var _lodash = _interopRequireDefault(require("lodash"));
 
 var _statuses = _interopRequireDefault(require("statuses"));
@@ -151,10 +145,13 @@ function $() {
     return '';
   };
   return Cont_Roller.of(callback);
-}
+} // CommonJS entry: `require()` returns `$` itself.
+// `$.$` and `$.default` keep `{ $ }` and default imports working.
 
-var _default = $;
-exports["default"] = _default;
+
+module.exports = $;
+module.exports.$ = $;
+module.exports["default"] = $;
 
 function prepareRes(res, data) {
   prepareResStatus(res, data.__status__);
