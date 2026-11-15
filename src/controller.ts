@@ -1,10 +1,10 @@
-import type { NextFunction, Request, Response } from 'express';
+import type { CookieOptions, NextFunction, Request, Response } from 'express';
 import type { Context, Controller, ControllerState, Handler } from './types.js';
-import { send } from './send.js';
+import { addCookie, cloneParts, emptyParts, send, setHeaders, type HeaderValue, type Headers } from './response.js';
 import { STATUSES } from './status.generated.js';
 
 /** Builder method names; generated status names must never collide with them. */
-export const BUILDER_METHODS = ['status'] as const;
+export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type'] as const;
 
 export function assertStatusCode(code: unknown): asserts code is number {
     if (typeof code !== 'number' || !Number.isInteger(code) || code < 100 || code > 999)
@@ -15,13 +15,14 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
     if (typeof handler !== 'function')
         throw new TypeError('$(handler): handler must be a function');
 
-    const state: ControllerState = { status: 200 };
+    const state: ControllerState = { defaults: { ...emptyParts(), status: 200 } };
 
     const middleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const parts = cloneParts(state.defaults);
             const ctx: Context = {};
             const value = await handler(req, ctx);
-            send(res, state.status, value);
+            send(res, parts, value);
         } catch (error) {
             next(error);
         }
@@ -35,7 +36,7 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
     const methods: Record<string, () => Controller<T>> = {};
     for (const { code, name } of STATUSES) {
         const setter = (): Controller<T> => {
-            state.status = code;
+            state.defaults.status = code;
             return controller;
         };
         methods[name] = setter;
@@ -45,7 +46,21 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
     return Object.assign(controller, methods, {
         status(code: number): Controller<T> {
             assertStatusCode(code);
-            state.status = code;
+            state.defaults.status = code;
+            return controller;
+        },
+        header(nameOrHeaders: string | Headers, value?: HeaderValue): Controller<T> {
+            setHeaders(state.defaults, nameOrHeaders, value);
+            return controller;
+        },
+        cookie(name: string, value: unknown, options?: CookieOptions): Controller<T> {
+            addCookie(state.defaults, name, value, options);
+            return controller;
+        },
+        type(type: string): Controller<T> {
+            if (typeof type !== 'string' || type === '')
+                throw new TypeError('type must be a non-empty string');
+            state.defaults.type = type;
             return controller;
         }
     });

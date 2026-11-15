@@ -1,4 +1,5 @@
-import type { Request, RequestHandler } from 'express';
+import type { CookieOptions, Request, RequestHandler } from 'express';
+import type { HeaderValue, Headers, ResponseParts } from './response.js';
 import type { Status, StatusCode } from './status.generated.js';
 
 /** A value or a promise of it. */
@@ -12,8 +13,12 @@ export type Handler<T = unknown> = (req: Request, ctx: Context) => Awaitable<T>;
 
 /** Internal mutable configuration of a controller. */
 export interface ControllerState {
-    status: number;
+    /** Response parts applied to every request, copied per request. */
+    defaults: ResponseParts;
 }
+
+/** Common content types, autocompleted; any MIME type or extension is accepted. */
+export type ContentType = LiteralUnion<'json' | 'html' | 'text' | 'xml' | 'application/json' | 'text/plain' | 'text/html'>;
 
 /**
  * `T` with autocompletion, still accepting any other `Base`.
@@ -40,6 +45,14 @@ export type StatusMethods<Self> =
 export interface Controller<T = unknown> extends RequestHandler, StatusMethods<Controller<T>> {
     /** Sets the success status: `.status(201)`. Same as `._201()` and `.created()`. */
     status(code: AnyStatusCode): Controller<T>;
+    /** Default header for every response: `.header('Cache-Control', 'no-store')`. */
+    header(name: string, value: HeaderValue): Controller<T>;
+    /** Default headers for every response: `.header({ 'Cache-Control': 'no-store' })`. */
+    header(headers: Headers): Controller<T>;
+    /** Default cookie for every response, same options as Express `res.cookie()`. */
+    cookie(name: string, value: unknown, options?: CookieOptions): Controller<T>;
+    /** Default content type, same as Express `res.type()`: `'json'`, `'text'`, `'text/csv'`... */
+    type(type: ContentType): Controller<T>;
     /** @internal */
     readonly __state__: ControllerState;
     /** @internal */
