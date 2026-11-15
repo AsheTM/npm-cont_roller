@@ -42,17 +42,7 @@ function () {
       __error__: null
     };
     this._status = 200;
-    this._statusError = 500; /////////////////////////
-    ///// Experimentale /////
-    /////////////////////////
-
-    this._chain = [// {
-      //     callback:   () => true, 
-      //     code:       200
-      // }
-    ]; /////////////////////////
-    /////////////////////////
-    /////////////////////////
+    this._statusError = 500;
 
     this._conditionalCallback = function () {
       return true;
