@@ -96,11 +96,15 @@ for(let code in status.STATUS_CODES) {
 }
 
 
-export function $(callback = (req, options) => '') {
+function $(callback = (req, options) => '') {
     return Cont_Roller.of(callback);
 }
 
-export default $;
+// CommonJS entry: `require()` returns `$` itself.
+// `$.$` and `$.default` keep `{ $ }` and default imports working.
+module.exports          = $;
+module.exports.$        = $;
+module.exports.default  = $;
 
 
 function prepareRes(res, data) {
