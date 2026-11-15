@@ -38,7 +38,17 @@ function () {
       __error__: null
     };
     this._status = 200;
-    this._statusError = 500;
+    this._statusError = 500; /////////////////////////
+    ///// Experimentale /////
+    /////////////////////////
+
+    this._chain = [// {
+      //     callback:   () => true, 
+      //     code:       200
+      // }
+    ]; /////////////////////////
+    /////////////////////////
+    /////////////////////////
 
     this._conditionalCallback = function () {
       return true;
@@ -49,17 +59,15 @@ function () {
     this._controller = function (cont_roller) {
       return function (req, res, next) {
         try {
-          var options = {
+          var options = Object.seal({
             __headers__: cont_roller._headers,
             // Headers
             __cookies__: cont_roller._cookies,
             // Array contains { name, value, options }
             __contentType__: cont_roller._contentType // String
 
-          };
-          options = Object.seal(options);
-
-          var data = cont_roller._mainCallback(req, options),
+          }),
+              data = cont_roller._mainCallback(req, options),
               ifGoesWrong = cont_roller._conditionalCallback(req, data),
               responseData = _objectSpread({}, data);
 
