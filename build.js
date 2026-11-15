@@ -31,8 +31,9 @@ class Cont_Roller{
                 try {
                     let 
                         options         = Object.seal({
-                            __headers__ :       cont_roller._headers,     // Headers
-                            __cookies__:        cont_roller._cookies,     // Array contains { name, value, options }
+                            // Fresh copies per request: mutations must never leak to other requests
+                            __headers__ :       { ...cont_roller._headers },  // Headers
+                            __cookies__:        [ ...cont_roller._cookies ],  // Array contains { name, value, options }
                             __contentType__:    cont_roller._contentType  // String
                         }), 
                         data            = cont_roller._mainCallback(req, options), 
