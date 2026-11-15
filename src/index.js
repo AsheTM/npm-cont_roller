@@ -18,26 +18,33 @@ class Cont_Roller{
             return function(req, res, next) {
                 try {
                     let 
-                        options         = {
-                            __headers__ :       cont_roller._headers,     // Headers
-                            __cookies__:        cont_roller._cookies,     // Array contains { name, value, options }
+                        options         = Object.seal({
+                            // Fresh copies per request: mutations must never leak to other requests
+                            __headers__ :       { ...cont_roller._headers },  // Headers
+                            __cookies__:        [ ...cont_roller._cookies ],  // Array contains { name, value, options }
                             __contentType__:    cont_roller._contentType  // String
-                        };
-                    options = Object.seal(options)
-                    let data            = cont_roller._mainCallback(req, options), 
-                        ifGoesWrong     = cont_roller._conditionalCallback(req, data), 
+                        }), 
+                        data            = cont_roller._mainCallback(req, options), 
+                        // true = pass, false = send the error response (as documented)
+                        passed          = cont_roller._conditionalCallback(req, data), 
                         responseData    = { ...data };
-                    if(ifGoesWrong)
+                    
+                    if(!passed)
                         return res.status(cont_roller._statusError).send(cont_roller._payloadError);
+                    
                     responseData.__status__         = cont_roller._status;
-                    responseData.__contentType__    = options.__contentType__   ||  data.__contentType__        ||  data.contentType        ||  contentType;
-                    responseData.__headers__        = options.__headers__       ||  data.__headers__            ||  data.headers            ||  headers;
-                    responseData.__cookies__        = options.__cookies__       ||  data.__cookies__            ||  data.cookies            ||  cookies;
-                    responseData.__payload__        = data && data.__payload__  ||  data                        ||  cont_roller._payload    ||  null;
+                    // Fallbacks: options -> returned data -> instance defaults (data may be null or a primitive)
+                    const source = data !== null && typeof data === 'object' ? data : {};
+                    responseData.__contentType__    = options.__contentType__   ||  source.__contentType__  ||  source.contentType  ||  cont_roller._contentType;
+                    responseData.__headers__        = options.__headers__       ||  source.__headers__      ||  source.headers      ||  cont_roller._headers;
+                    responseData.__cookies__        = options.__cookies__       ||  source.__cookies__      ||  source.cookies      ||  cont_roller._cookies;
+                    responseData.__payload__        = source.__payload__        ||  data                    ||  cont_roller._payload    ||  null;
+                    
                     prepareRes(res, responseData);
                     res.send(responseData.__payload__);
                 } catch(error) {
-                    res.status(500).send({ __error__:  error });
+                    // Error instances serialize to {} in JSON: send the message only (never the stack)
+                    res.status(500).send({ __error__:  error instanceof Error ? error.message : String(error) });
                 }
             };
         };
@@ -49,7 +56,7 @@ class Cont_Roller{
 
     if(conditionalCallback) {
         let self = this;
-        this._conditionalCallback   = _.isFunction(conditionalCallback) ? conditionalCallback : () => false;
+        this._conditionalCallback   = _.isFunction(conditionalCallback) ? conditionalCallback : () => true;
         return {
             _401:   function(errorResponse = { __error__:  'Unauthorized' }) {
                 self._statusError   = 401;
@@ -82,11 +89,15 @@ for(let code in status.STATUS_CODES) {
 }
 
 
-export function $(callback = (req, options) => '') {
+function $(callback = (req, options) => '') {
     return Cont_Roller.of(callback);
 }
 
-export default $;
+// CommonJS entry: `require()` returns `$` itself.
+// `$.$` and `$.default` keep `{ $ }` and default imports working.
+module.exports          = $;
+module.exports.$        = $;
+module.exports.default  = $;
 
 
 function prepareRes(res, data) {
@@ -110,6 +121,9 @@ function prepareResContentType(res, contentType) {
 }
 
 function prepareResCookies(res, cookies) {
-    for(let cookie in cookies)
-        res.cookie(cookie.name, cookie.value, cookie.options || cookies.options || {});
+    if(!Array.isArray(cookies))
+        return;
+    for(const cookie of cookies)
+        if(cookie && cookie.name)
+            res.cookie(cookie.name, cookie.value, cookie.options || {});
 }
