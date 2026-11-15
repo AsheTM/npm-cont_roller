@@ -37,4 +37,17 @@ describe('build output', () => {
         expect(pkg.exports['.'].require.default).toBe('./dist/index.cjs');
         expect(pkg.exports['.'].import.default).toBe('./dist/index.js');
     });
+
+    it('CommonJS declarations expose the same names as the ESM ones (#49)', async () => {
+        const { readFileSync } = await import('node:fs');
+        const names = (file: string) => {
+            const dts = readFileSync(new URL(`../dist/${file}`, import.meta.url), 'utf8');
+            const exported = [...dts.matchAll(/^export (?:type )?\{([^}]*)\};?$/gm)]
+                .flatMap((m) => m[1]!.split(','))
+                .map((n) => n.trim().replace(/^type /, '').split(' as ').pop()!.trim())
+                .filter((n) => n && n !== 'default' && n !== '$' && n !== 'STATUSES');
+            return [...new Set(exported)].sort();
+        };
+        expect(names('index.d.cts')).toEqual(names('index.d.ts'));
+    });
 });
