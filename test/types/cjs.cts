@@ -8,4 +8,7 @@ c.doesNotExist();
 // @ts-expect-error: v1 uppercase names are removed
 c._OK();
 
+const e = new $.HttpError(404);
+void e.status;
+
 export = c;

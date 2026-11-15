@@ -20,5 +20,12 @@ const id: number = r.body.id;
 // @ts-expect-error: unknown helper
 $.notAStatus();
 
+import { HttpError } from '@ashetm/cont_roller';
+const e1 = $.error(404);
+const msg: string = e1.body.error;
+const e2: HttpError<{ code: number }> = $.error(400, { code: 1 });
+$(() => { throw e2; });
+
 export default c;
+export { msg };
 export { id };

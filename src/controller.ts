@@ -5,6 +5,7 @@ import { STATUSES } from './status.generated.js';
 import { assertStatusCode } from './status.js';
 import { createContext } from './context.js';
 import { isResult } from './result.js';
+import { isHttpError } from './error.js';
 
 /** Builder method names; generated status names must never collide with them. */
 export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type'] as const;
@@ -17,8 +18,8 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
     const state: ControllerState = { defaults: { ...emptyParts(), status: 200 } };
 
     const middleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        const parts = cloneParts(state.defaults);
         try {
-            const parts = cloneParts(state.defaults);
             const ctx = createContext(parts);
             const value = await handler(req, ctx);
             if (isResult(value))
@@ -26,6 +27,11 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
             else
                 send(res, parts, value);
         } catch (error) {
+            // throw $.error(...) or throw $.notFound(...) become their response
+            if (isHttpError(error))
+                return send(res, mergeParts(parts, error.result.parts), error.result.body);
+            if (isResult(error))
+                return send(res, mergeParts(parts, error.parts), error.body);
             next(error);
         }
     };
