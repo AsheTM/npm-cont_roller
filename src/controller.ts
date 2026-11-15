@@ -1,9 +1,10 @@
 import type { CookieOptions, NextFunction, Request, Response } from 'express';
 import type { Controller, ControllerState, Handler } from './types.js';
-import { addCookie, cloneParts, emptyParts, send, setHeaders, type HeaderValue, type Headers } from './response.js';
+import { addCookie, cloneParts, emptyParts, mergeParts, send, setHeaders, type HeaderValue, type Headers } from './response.js';
 import { STATUSES } from './status.generated.js';
 import { assertStatusCode } from './status.js';
 import { createContext } from './context.js';
+import { isResult } from './result.js';
 
 /** Builder method names; generated status names must never collide with them. */
 export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type'] as const;
@@ -20,7 +21,10 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
             const parts = cloneParts(state.defaults);
             const ctx = createContext(parts);
             const value = await handler(req, ctx);
-            send(res, parts, value);
+            if (isResult(value))
+                send(res, mergeParts(parts, value.parts), value.body);
+            else
+                send(res, parts, value);
         } catch (error) {
             next(error);
         }
