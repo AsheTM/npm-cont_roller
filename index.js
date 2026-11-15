@@ -87,8 +87,9 @@ function () {
           prepareRes(res, responseData);
           res.send(responseData.__payload__);
         } catch (error) {
+          // Error instances serialize to {} in JSON: send the message only (never the stack)
           res.status(500).send({
-            __error__: error
+            __error__: error instanceof Error ? error.message : String(error)
           });
         }
       };
