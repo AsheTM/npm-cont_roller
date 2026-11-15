@@ -11,15 +11,26 @@ describe('build output', () => {
             expect(existsSync(new URL(`../${file}`, import.meta.url)), file).toBe(true);
     });
 
-    it('loads through require()', () => {
-        const mod = require('../dist/index.cjs');
+    it('require() returns the $ function with its aliases', () => {
+        const $ = require('../dist/index.cjs');
+        expect(typeof $).toBe('function');
+        expect($.$).toBe($);
+        expect($.default).toBe($);
+        expect($.STATUSES.length).toBeGreaterThan(50);
+    });
+
+    it('import() exposes $ as default and named export', async () => {
+        const entry = '../dist/index.js'; // variable path: dist may not exist at typecheck time
+        const mod = await import(entry);
+        expect(typeof mod.default).toBe('function');
+        expect(mod.$).toBe(mod.default);
         expect(mod.STATUSES.length).toBeGreaterThan(50);
     });
 
-    it('loads through import()', async () => {
-        const entry = '../dist/index.js'; // variable path: dist may not exist at typecheck time
-        const mod = await import(entry);
-        expect(mod.STATUSES.length).toBeGreaterThan(50);
+    it('CJS declarations use export =', async () => {
+        const { readFileSync } = await import('node:fs');
+        const dts = readFileSync(new URL('../dist/index.d.cts', import.meta.url), 'utf8');
+        expect(dts).toMatch(/export = \$;/);
     });
 
     it('exports map points at the built files', () => {
