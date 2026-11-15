@@ -1,6 +1,7 @@
 import type { AnyStatusCode, Controller, Handler } from './types.js';
 import type { Status } from './status.generated.js';
 import { createHttpError, HttpError, isHttpError } from './error.js';
+import { getConfig, setConfig, type Config } from './config.js';
 import { createResult, isResult, redirectResult, statusResult, type Result, type ResultOptions } from './result.js';
 import { createController } from './controller.js';
 import { STATUSES } from './status.generated.js';
@@ -29,6 +30,10 @@ export interface Dollar {
     readonly HttpError: typeof HttpError;
     /** True for an `HttpError` (works across ESM/CJS copies). */
     isHttpError(value: unknown): value is HttpError;
+    /** Reads the global options. */
+    config(): Readonly<Config>;
+    /** Sets global options, chainable: `$.config({ errors: 'respond' })`. */
+    config(options: Partial<Config>): Dollar;
 }
 
 /**
@@ -53,7 +58,14 @@ export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect',
 const helpers: Record<string, unknown> = {};
 for (const { code, name } of STATUSES)
     helpers[name] = <B>(body?: B, options?: ResultOptions) => createResult(code, body as B, options);
-Object.assign($, helpers, { status: statusResult, redirect: redirectResult, isResult, error: createHttpError, isHttpError });
+function config(options?: Partial<Config>): Readonly<Config> | Dollar {
+    if (options === undefined)
+        return getConfig();
+    setConfig(options);
+    return $;
+}
+
+Object.assign($, helpers, { status: statusResult, redirect: redirectResult, isResult, error: createHttpError, isHttpError, config });
 
 Object.defineProperties($, {
     $:          { value: $, enumerable: true },

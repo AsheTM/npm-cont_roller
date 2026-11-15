@@ -10,3 +10,4 @@ export type { AfterCheck, AnyStatusCode, Awaitable, BeforeCheck, Data, GuardFail
 export type { HeaderValue, Headers } from './response.js';
 export type { Dollar, ResultHelpers } from './dollar.js';
 export type { Result, ResultOptions } from './result.js';
+export type { Config } from './config.js';
