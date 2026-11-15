@@ -1,5 +1,6 @@
 import type { CookieOptions, Request, RequestHandler } from 'express';
 import type { HeaderValue, Headers, ResponseParts } from './response.js';
+import type { Result } from './result.js';
 import type { Status, StatusCode } from './status.generated.js';
 
 /** A value or a promise of it. */
@@ -35,9 +36,25 @@ export interface Context {
 export type Handler<T = unknown> = (req: Request, ctx: Context) => Awaitable<T>;
 
 /** Internal mutable configuration of a controller. */
+/** The data a handler resolves to, without explicit `$.*` results. */
+export type Data<T> = Exclude<Awaited<T>, Result>;
+
+/** Check run before the handler: return true to continue. */
+export type BeforeCheck = (req: Request) => Awaitable<unknown>;
+
+/** Check run after the handler with its data: return true to send the data. */
+export type AfterCheck<T> = (req: Request, data: Data<T>) => Awaitable<unknown>;
+
+/** Response sent when a check fails: a `$.*` result, or a function returning one. */
+export type GuardFailure<Args extends unknown[]> = Result | ((...args: Args) => Awaitable<Result>);
+
 export interface ControllerState {
     /** Response parts applied to every request, copied per request. */
     defaults: ResponseParts;
+    /** Guards run before the handler, in order. */
+    before: Array<{ check: BeforeCheck; failure?: GuardFailure<[Request]> }>;
+    /** Guards run after the handler, in order. */
+    after: Array<{ check: AfterCheck<unknown>; failure?: GuardFailure<[Request, unknown]> }>;
 }
 
 /** Common content types, autocompleted; any MIME type or extension is accepted. */
@@ -76,6 +93,29 @@ export interface Controller<T = unknown> extends RequestHandler, StatusMethods<C
     cookie(name: string, value: unknown, options?: CookieOptions): Controller<T>;
     /** Default content type, same as Express `res.type()`: `'json'`, `'text'`, `'text/csv'`... */
     type(type: ContentType): Controller<T>;
+
+    /**
+     * Check run **before** the handler; when it returns false, `failure` is sent and the handler
+     * never runs. Same as `.checkBefore()`. Default failure: 500.
+     *
+     * ```ts
+     * $(handler).guard((req) => !!req.user, $.unauthorized())
+     * ```
+     */
+    guard(check: BeforeCheck, failure?: GuardFailure<[Request]>): Controller<T>;
+    /** Alias of `.guard()`. */
+    checkBefore(check: BeforeCheck, failure?: GuardFailure<[Request]>): Controller<T>;
+    /**
+     * Check run **after** the handler with its data; when it returns false, `failure` is sent
+     * instead of the data. Same as `.checkAfter()`. Skipped when the handler returns a `$.*` result.
+     *
+     * ```ts
+     * $(handler).if((req, user) => !!user, $.notFound())
+     * ```
+     */
+    if(check: AfterCheck<T>, failure?: GuardFailure<[Request, Data<T>]>): Controller<T>;
+    /** Alias of `.if()`. */
+    checkAfter(check: AfterCheck<T>, failure?: GuardFailure<[Request, Data<T>]>): Controller<T>;
     /** @internal */
     readonly __state__: ControllerState;
     /** @internal */

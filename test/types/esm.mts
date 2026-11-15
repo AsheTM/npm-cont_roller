@@ -26,6 +26,14 @@ const msg: string = e1.body.error;
 const e2: HttpError<{ code: number }> = $.error(400, { code: 1 });
 $(() => { throw e2; });
 
+$(async () => ({ id: 1, active: true }))
+    .guard((req) => !!req.headers.authorization, $.unauthorized())
+    .checkBefore(async () => true)
+    .if((_req, data) => data.active, $.forbidden())
+    .checkAfter((_req, data) => data.id > 0, (_req, data) => $.notFound({ id: data.id }));
+// @ts-expect-error: data has no 'missing' property
+$(() => ({ id: 1 })).if((_req, data) => data.missing);
+
 export default c;
 export { msg };
 export { id };
