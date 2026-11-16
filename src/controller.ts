@@ -5,9 +5,10 @@ import { STATUSES } from './status.generated.js';
 import { assertStatusCode } from './status.js';
 import { errorMode } from './config.js';
 import { execute, respondWithError } from './pipeline.js';
+import { run, type RunRequest } from './run.js';
 
 /** Builder method names; generated status names must never collide with them. */
-export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type', 'guard', 'checkBefore', 'if', 'checkAfter'] as const;
+export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type', 'guard', 'checkBefore', 'if', 'checkAfter', 'run'] as const;
 
 function assertCheck(check: unknown, method: string): void {
     if (typeof check !== 'function')
@@ -60,6 +61,7 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
     };
 
     return Object.assign(controller, methods, {
+        run:            <B = unknown>(req?: RunRequest) => run<B, T>(state, handler, req),
         guard:          before,
         checkBefore:    before,
         if:             after,

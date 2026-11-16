@@ -82,7 +82,7 @@ export function mergeParts(base: ResponseParts, top: ResponseParts): ResponsePar
     return merged;
 }
 
-const NO_BODY_STATUSES = new Set([204, 205, 304]);
+export const NO_BODY_STATUSES = new Set([204, 205, 304]);
 
 /** Writes the parts and `body` to the Express response. */
 export function send(res: Response, parts: ResponseParts, body: unknown): void {
