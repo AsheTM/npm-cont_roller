@@ -66,4 +66,20 @@ describe('$.config() and unexpected errors', () => {
         const res = await request(app).get('/test');
         expect(res.status).toBe(500);
     });
+
+    describe('errors while writing the response', () => {
+        it('go to next(err) by default', async () => {
+            const res = await request(appWith($(() => ({ n: 10n })))).get('/test');
+            expect(res.status).toBe(599);
+            expect(res.body.forwarded).toMatch(/BigInt/);
+        });
+
+        it('answer 500 with the builder defaults in respond mode', async () => {
+            $.config({ errors: 'respond' });
+            const res = await request(appWith($(() => ({ n: 10n })).header('X-Api', 'v2'))).get('/test');
+            expect(res.status).toBe(500);
+            expect(res.body.error).toMatch(/BigInt/);
+            expect(res.headers['x-api']).toBe('v2');
+        });
+    });
 });
