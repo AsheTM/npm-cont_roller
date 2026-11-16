@@ -1,6 +1,6 @@
 {
   "name": "@ashetm/cont_roller",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "jQuery-style controllers for Express: return your data, chain the status, guard before and after. Async, typed, zero dependencies.",
   "type": "module",
   "main": "./dist/index.cjs",
