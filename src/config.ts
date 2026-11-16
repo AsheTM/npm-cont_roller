@@ -9,7 +9,16 @@ export interface Config {
 }
 
 const DEFAULTS: Config = { errors: 'next' };
-const config: Config = { ...DEFAULTS };
+
+/**
+ * The options live on `globalThis` under a registered symbol, so every copy of the package shares them:
+ * a project can load both the CommonJS and the ES module build (dual package), or several copies.
+ */
+const CONFIG_KEY = Symbol.for('@ashetm/cont_roller/config');
+const store = globalThis as typeof globalThis & { [CONFIG_KEY]?: Config };
+if (store[CONFIG_KEY] === undefined)
+    Object.defineProperty(store, CONFIG_KEY, { value: { ...DEFAULTS }, enumerable: false, configurable: false, writable: false });
+const config: Config = store[CONFIG_KEY]!;
 
 export function getConfig(): Readonly<Config> {
     return { ...config };

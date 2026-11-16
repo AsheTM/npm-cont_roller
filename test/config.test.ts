@@ -83,3 +83,30 @@ describe('$.config() and unexpected errors', () => {
         });
     });
 });
+
+describe('$.config() with both builds loaded (dual package, #91)', () => {
+    it('is shared between the CommonJS and ES module builds', async () => {
+        const { createRequire } = await import('node:module');
+        const cjs = createRequire(import.meta.url)('../dist/index.cjs') as typeof $;
+        const entry = '../dist/index.js';
+        const esm = (await import(entry) as { default: typeof $ }).default;
+        expect(cjs).not.toBe(esm);
+
+        cjs.config({ errors: 'respond' });
+        expect(esm.config()).toEqual({ errors: 'respond' });
+        expect($.config()).toEqual({ errors: 'respond' });
+
+        const res = await get(esm(() => { throw new Error('from esm'); }));
+        expect(res.status).toBe(500);
+        expect(res.body).toEqual({ error: 'from esm' });
+
+        esm.config({ errors: 'next' });
+        expect(cjs.config()).toEqual({ errors: 'next' });
+        expect((await get(cjs(() => { throw new Error('from cjs'); }))).status).toBe(599);
+    });
+
+    it('keeps the store out of enumerable globals', () => {
+        expect(Object.keys(globalThis)).not.toContain('@ashetm/cont_roller/config');
+        expect(Object.getOwnPropertyDescriptor(globalThis, Symbol.for('@ashetm/cont_roller/config'))?.enumerable).toBe(false);
+    });
+});
