@@ -3,7 +3,7 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.0.1] - 2026-11-16
 
 ### Changed
 - `LiteralUnion` now comes from `@ashetm/types` (types-only dependency, no runtime code) instead of an inlined copy (#55).
@@ -64,5 +64,6 @@ Rewrite in TypeScript. See [MIGRATION.md](MIGRATION.md) for every change and how
 
 - First release.
 
+[2.0.1]: https://github.com/AsheTM/npm-cont_roller/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/AsheTM/npm-cont_roller/compare/v1.0.2...v2.0.0
 [1.0.2]: https://github.com/AsheTM/npm-cont_roller/compare/v1.0.1...v1.0.2
