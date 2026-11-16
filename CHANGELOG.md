@@ -3,6 +3,11 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [2.3.1] - 2026-11-16
+
+### Fixed
+- `$.config()` is shared by every copy of the package: a project loading both the CommonJS and the ES module build no longer gets two separate configs (#91).
+
 ## [2.3.0] - 2026-11-16
 
 ### Added
@@ -103,6 +108,7 @@ Rewrite in TypeScript. See [MIGRATION.md](MIGRATION.md) for every change and how
 
 - First release.
 
+[2.3.1]: https://github.com/AsheTM/npm-cont_roller/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.0.1...v2.1.0
