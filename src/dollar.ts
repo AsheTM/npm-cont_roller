@@ -6,6 +6,7 @@ import { getConfig, setConfig, type Config } from './config.js';
 import { createResult, isResult, redirectResult, statusResult, type Result, type ResultOptions } from './result.js';
 import { createController } from './controller.js';
 import { createChain } from './chain.js';
+import { downloadResult, fileResult, renderResult, type DownloadBody, type FileBody, type FileOptions, type RenderBody } from './delivery.js';
 import { emptyState } from './settings.js';
 import { assertValidation } from './validation.js';
 import { STATUSES } from './status.generated.js';
@@ -67,6 +68,33 @@ export interface Dollar {
      * ```
      */
     validate<S extends ValidationSchemas>(schemas: S, failure?: ValidationFailure): ControllerChain<ValidatedRequest<S>>;
+
+    /**
+     * Sends a file with Express `res.sendFile()`. Same as `$.sendFile()`. The status comes from the builder or ctx.
+     *
+     * ```ts
+     * $((req) => $.file(req.params.name, { root: '/data/public', maxAge: '1d' }))
+     * ```
+     */
+    file(path: string, options?: FileOptions): Result<FileBody>;
+    /** Alias of `$.file()`. */
+    sendFile(path: string, options?: FileOptions): Result<FileBody>;
+    /**
+     * Sends a file as an attachment with Express `res.download()` (`Content-Disposition`).
+     *
+     * ```ts
+     * $(() => $.download('/data/report.csv', 'report-2026.csv'))
+     * ```
+     */
+    download(path: string, filename?: string, options?: FileOptions): Result<DownloadBody>;
+    /**
+     * Renders a view with Express `res.render()` (the app's view engine) and sends the HTML.
+     *
+     * ```ts
+     * $((req) => $.render('profile', { user: req.user }))
+     * ```
+     */
+    render(view: string, locals?: object, options?: ResultOptions): Result<RenderBody>;
 }
 
 /**
@@ -92,7 +120,7 @@ function create<T>(handlerOrSchemas: Handler<T> | ValidationSchemas, handler?: H
 export const $ = create as unknown as Dollar;
 
 /** Static members of `$`; generated status names must never collide with them. */
-export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect', 'isResult', 'error', 'HttpError', 'isHttpError', 'config', 'guard', 'checkBefore', 'validate'] as const;
+export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect', 'isResult', 'error', 'HttpError', 'isHttpError', 'config', 'guard', 'checkBefore', 'validate', 'file', 'sendFile', 'download', 'render'] as const;
 
 const helpers: Record<string, unknown> = {};
 for (const { code, name } of STATUSES)
@@ -115,7 +143,11 @@ Object.assign($, helpers, {
     config,
     guard:          start.guard,
     checkBefore:    start.checkBefore,
-    validate:       start.validate
+    validate:       start.validate,
+    file:           fileResult,
+    sendFile:       fileResult,
+    download:       downloadResult,
+    render:         renderResult
 });
 
 Object.defineProperties($, {

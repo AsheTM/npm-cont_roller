@@ -33,6 +33,18 @@ export function respondWithError(parts: ResponseParts, error: unknown): Outcome 
 }
 
 /**
+ * The `respond` error mode answer for an error raised while sending (missing file, view error):
+ * the HTTP status Express gave it (404 for a missing file) with its reason phrase, never the message
+ * (it contains the file path). Other errors: `respondWithError()`.
+ */
+export function respondWithSendError(parts: ResponseParts, error: unknown): Outcome {
+    const { status } = (error ?? {}) as { status?: unknown };
+    if (typeof status === 'number' && status >= 400 && status <= 499)
+        return { parts: { ...parts, status }, body: createHttpError(status).body };
+    return respondWithError(parts, error);
+}
+
+/**
  * Runs a request through the controller:
  * before-guards → validation → handler → after-guards, with `$.*` results and `$.error()` applied,
  * layered as builder defaults → ctx → result.
