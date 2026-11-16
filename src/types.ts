@@ -1,4 +1,5 @@
 import type { CookieOptions, Request, RequestHandler } from 'express';
+import type { LiteralUnion } from '@ashetm/types';
 import type { HeaderValue, Headers, ResponseParts } from './response.js';
 import type { Result } from './result.js';
 import type { Status, StatusCode } from './status.generated.js';
@@ -59,13 +60,6 @@ export interface ControllerState {
 
 /** Common content types, autocompleted; any MIME type or extension is accepted. */
 export type ContentType = LiteralUnion<'json' | 'html' | 'text' | 'xml' | 'application/json' | 'text/plain' | 'text/html'>;
-
-/**
- * `T` with autocompletion, still accepting any other `Base`.
- * Same as `LiteralUnion` from `@ashetm/types`, inlined because that package only ships
- * ESM declarations, which CommonJS consumers (`moduleResolution: node16`) cannot import.
- */
-export type LiteralUnion<T extends Base, Base = string> = T | (Base & Record<never, never>);
 
 /** A known status code (autocompleted) or any other numeric code. */
 export type AnyStatusCode = LiteralUnion<StatusCode, number>;
