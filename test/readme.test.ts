@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
 import express, { type Request } from 'express';
 import { z } from 'zod';
+import { Readable } from 'node:stream';
 import $ from '../src/index.js';
 import { resetConfig } from '../src/config.js';
 
@@ -183,6 +184,43 @@ describe('README examples', () => {
             expect((await request(validationApp()).get('/me').set('X-User', 'a')).body).toEqual({ user: 'a' });
             expect((await request(validationApp()).post('/posts').send({ title: 't' })).status).toBe(401);
             expect((await request(validationApp()).post('/posts').set('X-User', 'a').send({ title: 't' })).status).toBe(201);
+        });
+    });
+
+    describe('files, views and streams', () => {
+        const PUBLIC = new URL('./fixtures/', import.meta.url).pathname;
+
+        function filesApp() {
+            const a = express();
+            a.get('/public/:name', $.validate({ params: z.object({ name: z.string().regex(/^[\w.-]+$/) }) })
+                .handle((req) => $.file(req.params.name, { root: PUBLIC, maxAge: '1d' })));
+            a.get('/big.csv', $(() => Readable.from(['a,b\n', '1,2\n'])).type('text/csv'));
+            a.get('/events', $(async (_req, ctx) => {
+                ctx.res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+                for await (const event of [{ n: 1 }, { n: 2 }])
+                    ctx.res.write(`data: ${JSON.stringify(event)}\n\n`);
+                ctx.res.end();
+            }));
+            return a;
+        }
+
+        it('$.file with root and a validated name', async () => {
+            const res = await request(filesApp()).get('/public/hello.txt');
+            expect(res.text).toBe('hello file\n');
+            expect(res.headers['cache-control']).toBe('public, max-age=86400');
+            expect((await request(filesApp()).get('/public/..%2F..%2Fpackage.json')).status).toBe(400);
+        });
+
+        it('returned stream and ctx.res', async () => {
+            const csv = await request(filesApp()).get('/big.csv');
+            expect(csv.headers['content-type']).toMatch(/^text\/csv/);
+            expect(csv.text).toBe('a,b\n1,2\n');
+            expect((await request(filesApp()).get('/events')).text).toBe('data: {"n":1}\n\ndata: {"n":2}\n\n');
+        });
+
+        it('.run() bodies', async () => {
+            expect((await $(() => $.download('/d/r.csv', 'r-2026.csv')).run()).body).toEqual({ download: '/d/r.csv', filename: 'r-2026.csv', options: {} });
+            await expect($((_req, ctx) => ctx.res.end()).run()).rejects.toThrow();
         });
     });
 });
