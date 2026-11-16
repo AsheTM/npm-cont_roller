@@ -3,6 +3,11 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- `LiteralUnion` now comes from `@ashetm/types` (types-only dependency, no runtime code) instead of an inlined copy (#55).
+
 ## [2.0.0] - 2026-11-15
 
 Rewrite in TypeScript. See [MIGRATION.md](MIGRATION.md) for every change and how to upgrade.
