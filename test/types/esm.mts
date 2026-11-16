@@ -74,7 +74,14 @@ $(async () => ({ ok: true }))
     .validate({ body: User })
     .if((req) => req.body.age > 18, $.forbidden());
 
-export { created, notMiddleware };
+// $(schemas, handler) (#69)
+const overload = $({ body: User, params: Id }, async (req) => ({ name: req.body.name, id: req.params.id }))
+    .created()
+    .if((req, data) => req.body.age > 0 && data.id.length > 0);
+// @ts-expect-error: not in the schema output
+$({ body: User }, (req) => req.body.missing);
+
+export { created, notMiddleware, overload };
 export default c;
 export { ran };
 export { msg };
