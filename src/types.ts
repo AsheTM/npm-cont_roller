@@ -2,6 +2,7 @@ import type { CookieOptions, Request, RequestHandler } from 'express';
 import type { LiteralUnion } from '@ashetm/types';
 import type { HeaderValue, Headers, ResponseParts } from './response.js';
 import type { Result } from './result.js';
+import type { RunRequest, RunResult } from './run.js';
 import type { Status, StatusCode } from './status.generated.js';
 
 /** A value or a promise of it. */
@@ -110,6 +111,20 @@ export interface Controller<T = unknown> extends RequestHandler, StatusMethods<C
     if(check: AfterCheck<T>, failure?: GuardFailure<[Request, Data<T>]>): Controller<T>;
     /** Alias of `.if()`. */
     checkAfter(check: AfterCheck<T>, failure?: GuardFailure<[Request, Data<T>]>): Controller<T>;
+
+    /**
+     * Runs the controller **without HTTP** and resolves with the response as a plain object,
+     * through the same pipeline as a real request. Meant for tests.
+     *
+     * ```ts
+     * const res = await getUser.run({ params: { id: '1' } });
+     * expect(res.status).toBe(200);
+     * ```
+     *
+     * Unexpected errors follow `$.config`: the promise rejects by default, and resolves
+     * with `500 { error: message }` in `respond` mode. Narrow the body type with `run<User>()`.
+     */
+    run<B = unknown>(req?: RunRequest): Promise<RunResult<B>>;
     /** @internal */
     readonly __state__: ControllerState;
     /** @internal */
