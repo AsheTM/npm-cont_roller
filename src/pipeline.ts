@@ -5,6 +5,7 @@ import { createContext } from './context.js';
 import { isResult, type Result } from './result.js';
 import { createHttpError, isHttpError } from './error.js';
 import { errorMode } from './config.js';
+import { resolveValidationFailure, validateRequest } from './validation.js';
 
 /** What a request resolves to, before it is written anywhere (Express response or `.run()`). */
 export interface Outcome {
@@ -33,7 +34,7 @@ export function respondWithError(parts: ResponseParts, error: unknown): Outcome 
 
 /**
  * Runs a request through the controller:
- * before-guards → handler → after-guards, with `$.*` results and `$.error()` applied,
+ * before-guards → validation → handler → after-guards, with `$.*` results and `$.error()` applied,
  * layered as builder defaults → ctx → result.
  *
  * Unexpected errors resolve to a 500 outcome in `respond` mode, and are re-thrown otherwise.
@@ -47,6 +48,13 @@ export async function execute<T>(state: ControllerState, handler: Handler<T>, re
                 return withResult(parts, await resolveFailure(failure as GuardFailure<never[]> | undefined, [req]));
         }
 
+        // 2. validation: the validated values replace req.params / query / body
+        for (const { schemas, failure } of state.validations) {
+            const issues = await validateRequest(schemas, req);
+            if (issues)
+                return withResult(parts, await resolveValidationFailure(failure, issues, req));
+        }
+
         const ctx = createContext(parts);
         const value = await handler(req, ctx);
 
@@ -54,7 +62,7 @@ export async function execute<T>(state: ControllerState, handler: Handler<T>, re
         if (isResult(value))
             return withResult(parts, value);
 
-        // 2. guards after the handler, receiving its data
+        // 3. guards after the handler, receiving its data
         for (const { check, failure } of state.after) {
             if (!await check(req, value as never))
                 return withResult(parts, await resolveFailure(failure as GuardFailure<never[]> | undefined, [req, value]));

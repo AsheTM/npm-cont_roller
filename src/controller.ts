@@ -1,14 +1,15 @@
 import type { CookieOptions, NextFunction, Request, Response } from 'express';
-import type { AfterCheck, BeforeCheck, Controller, ControllerState, GuardFailure, Handler } from './types.js';
+import type { AfterCheck, BeforeCheck, Controller, ControllerState, GuardFailure, Handler, ValidationFailure, ValidationSchemas } from './types.js';
 import { addCookie, cloneParts, emptyParts, send, setHeaders, type HeaderValue, type Headers } from './response.js';
 import { STATUSES } from './status.generated.js';
 import { assertStatusCode } from './status.js';
 import { errorMode } from './config.js';
 import { execute, respondWithError } from './pipeline.js';
 import { run, type RunRequest } from './run.js';
+import { assertValidation } from './validation.js';
 
 /** Builder method names; generated status names must never collide with them. */
-export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type', 'guard', 'checkBefore', 'if', 'checkAfter', 'run'] as const;
+export const BUILDER_METHODS = ['status', 'header', 'cookie', 'type', 'guard', 'checkBefore', 'if', 'checkAfter', 'validate', 'run'] as const;
 
 function assertCheck(check: unknown, method: string): void {
     if (typeof check !== 'function')
@@ -19,7 +20,7 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
     if (typeof handler !== 'function')
         throw new TypeError('$(handler): handler must be a function');
 
-    const state: ControllerState = { defaults: { ...emptyParts(), status: 200 }, before: [], after: [] };
+    const state: ControllerState = { defaults: { ...emptyParts(), status: 200 }, before: [], after: [], validations: [] };
 
     const middleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
@@ -66,6 +67,11 @@ export function createController<T>(handler: Handler<T>): Controller<T> {
         checkBefore:    before,
         if:             after,
         checkAfter:     after,
+        validate(schemas: ValidationSchemas, failure?: ValidationFailure): Controller<T> {
+            assertValidation(schemas, failure);
+            state.validations.push(failure === undefined ? { schemas: { ...schemas } } : { schemas: { ...schemas }, failure });
+            return controller;
+        },
         status(code: number): Controller<T> {
             assertStatusCode(code);
             state.defaults.status = code;
