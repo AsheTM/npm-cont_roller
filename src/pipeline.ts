@@ -1,7 +1,7 @@
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import type { ControllerState, GuardFailure, Handler } from './types.js';
 import { cloneParts, mergeParts, type ResponseParts } from './response.js';
-import { createContext } from './context.js';
+import { createContext, usedResponse } from './context.js';
 import { isResult, type Result } from './result.js';
 import { createHttpError, isHttpError } from './error.js';
 import { errorMode } from './config.js';
@@ -9,8 +9,10 @@ import { resolveValidationFailure, validateRequest } from './validation.js';
 
 /** What a request resolves to, before it is written anywhere (Express response or `.run()`). */
 export interface Outcome {
-    parts:  ResponseParts;
-    body:   unknown;
+    parts:      ResponseParts;
+    body:       unknown;
+    /** The handler answered itself through `ctx.res`: nothing must be sent. */
+    handled?:   boolean;
 }
 
 /** Default failure of a guard without explicit result. */
@@ -51,7 +53,7 @@ export function respondWithSendError(parts: ResponseParts, error: unknown): Outc
  *
  * Unexpected errors resolve to a 500 outcome in `respond` mode, and are re-thrown otherwise.
  */
-export async function execute<T>(state: ControllerState, handler: Handler<T>, req: Request): Promise<Outcome> {
+export async function execute<T>(state: ControllerState, handler: Handler<T>, req: Request, res?: Response): Promise<Outcome> {
     const parts = cloneParts(state.defaults);
     try {
         // 1. guards before the handler: on failure the handler never runs
@@ -67,8 +69,12 @@ export async function execute<T>(state: ControllerState, handler: Handler<T>, re
                 return withResult(parts, await resolveValidationFailure(failure, issues, req));
         }
 
-        const ctx = createContext(parts);
+        const ctx = createContext(parts, res);
         const value = await handler(req, ctx);
+
+        // The handler answered through ctx.res: after-guards and sending are skipped
+        if (res !== undefined && (res.headersSent || res.writableEnded || (usedResponse(ctx) && value === undefined)))
+            return { parts, body: undefined, handled: true };
 
         // An explicit $.* result is the handler's final decision: after-guards are skipped
         if (isResult(value))
@@ -82,6 +88,9 @@ export async function execute<T>(state: ControllerState, handler: Handler<T>, re
 
         return { parts, body: value };
     } catch (error) {
+        // Nothing can be sent any more: the error goes to the error handling (next(err))
+        if (res?.headersSent)
+            throw error;
         // throw $.error(...) or throw $.notFound(...) become their response
         if (isHttpError(error))
             return withResult(parts, error.result);

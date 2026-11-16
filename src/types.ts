@@ -1,4 +1,4 @@
-import type { CookieOptions, Request, RequestHandler } from 'express';
+import type { CookieOptions, Request, RequestHandler, Response } from 'express';
 import type { LiteralUnion } from '@ashetm/types';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { HeaderValue, Headers, ResponseParts } from './response.js';
@@ -33,6 +33,20 @@ export interface Context {
     type(type: ContentType): Context;
     /** Sets the status for this response, overriding the builder's success status. */
     status(code: AnyStatusCode): Context;
+    /**
+     * The Express response, for what the `$.*` helpers do not cover (Server-Sent Events, custom writes...).
+     * When the handler reads `ctx.res` and returns `undefined`, or when the response is already sent,
+     * cont_roller sends nothing: the handler answers. Not available in `.run()` (throws).
+     *
+     * ```ts
+     * $(async (req, ctx) => {
+     *     ctx.res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+     *     ctx.res.write('data: hello\n\n');
+     *     ctx.res.end();
+     * })
+     * ```
+     */
+    readonly res: Response;
 }
 
 /** The user handler: returns the response body, sync or async. `Req` is typed by validation. */

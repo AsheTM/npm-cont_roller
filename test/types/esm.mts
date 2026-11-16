@@ -91,7 +91,30 @@ $.guard(() => true).validate({ params: type({ id: 'string' }) }).do((req) => req
 // @ts-expect-error: age is a number after coercion
 $({ body: z.object({ age: z.coerce.number() }) }, (req) => req.body.age.toUpperCase());
 
-export { created, notMiddleware, overload };
+// Files, views, streams and ctx.res (#79, #80, #81)
+import { Readable } from 'node:stream';
+import type { FileBody, RunResult as RR } from '@ashetm/cont_roller';
+$(() => $.file('a.txt', { root: '/data', maxAge: '1d', headers: { 'X-A': '1' } }));
+$(() => $.sendFile('/a.txt'));
+$(() => $.download('/a.csv', 'b.csv', { dotfiles: 'deny' }));
+$((req) => $.render('profile', { user: req.params.id }, { type: 'html' }));
+$(() => $.stream(Readable.from(['x']), { type: 'text' }));
+$(() => $.pipe(new ReadableStream()));
+$(() => Readable.from(['x'])).type('text');
+const fileRun: Promise<RR<FileBody>> = $(() => $.file('/a')).run<FileBody>();
+$(async (_req, ctx) => {
+    ctx.res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    ctx.res.write('data: x\n\n');
+    ctx.res.end();
+});
+// @ts-expect-error: ctx.res is read-only
+$((_req, ctx) => { ctx.res = null as never; });
+// @ts-expect-error: not a stream
+$.stream('text');
+// @ts-expect-error: unknown sendFile option
+$.file('/a', { nope: true });
+
+export { created, notMiddleware, overload, fileRun };
 export default c;
 export { ran };
 export { msg };

@@ -35,10 +35,12 @@ export function createController<T>(handler: Handler<T>, initial?: ControllerSta
 
         let outcome: Outcome;
         try {
-            outcome = await execute(state, handler, req);
+            outcome = await execute(state, handler, req, res);
         } catch (error) {
             return fail(error, false);
         }
+        if (outcome.handled)
+            return;
         try {
             await send(res, outcome.parts, outcome.body);
         } catch (error) {
