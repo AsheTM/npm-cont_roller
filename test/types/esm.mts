@@ -81,6 +81,16 @@ const overload = $({ body: User, params: Id }, async (req) => ({ name: req.body.
 // @ts-expect-error: not in the schema output
 $({ body: User }, (req) => req.body.missing);
 
+// Real libraries: req types inferred from zod, valibot and arktype schemas (#70)
+import { z } from 'zod';
+import * as v from 'valibot';
+import { type } from 'arktype';
+$({ body: z.object({ name: z.string(), age: z.coerce.number() }) }, (req) => req.body.name.length + req.body.age);
+$.validate({ query: v.object({ page: v.pipe(v.string(), v.transform(Number)) }) }).handle((req) => req.query.page.toFixed());
+$.guard(() => true).validate({ params: type({ id: 'string' }) }).do((req) => req.params.id.toUpperCase());
+// @ts-expect-error: age is a number after coercion
+$({ body: z.object({ age: z.coerce.number() }) }, (req) => req.body.age.toUpperCase());
+
 export { created, notMiddleware, overload };
 export default c;
 export { ran };
