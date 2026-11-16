@@ -34,6 +34,13 @@ $(async () => ({ id: 1, active: true }))
 // @ts-expect-error: data has no 'missing' property
 $(() => ({ id: 1 })).if((_req, data) => data.missing);
 
+import type { RunResult } from '@ashetm/cont_roller';
+const ran: Promise<RunResult<{ id: number }>> = $(async () => ({ id: 1 })).run<{ id: number }>({ params: { id: '1' }, headers: { authorization: 'x' }, user: { id: 1 } });
+void $(() => 1).run();
+// @ts-expect-error: params must be an object
+void $(() => 1).run({ params: 42 });
+
 export default c;
+export { ran };
 export { msg };
 export { id };

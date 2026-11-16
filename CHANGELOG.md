@@ -3,6 +3,15 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-11-16
+
+### Added
+- `controller.run(req)`: run a controller without HTTP and get the response as a plain object (`status`, raw `body`, `headers`, `cookies`, `type`), through the same pipeline as a real request. Unexpected errors follow `$.config` (#60).
+- Exported types `RunRequest`, `RunResult` and `CookieEntry` (#60).
+
+### Changed
+- Internal: the request pipeline is shared by the Express middleware and `.run()` (#59).
+
 ## [2.0.1] - 2026-11-16
 
 ### Changed
@@ -64,6 +73,7 @@ Rewrite in TypeScript. See [MIGRATION.md](MIGRATION.md) for every change and how
 
 - First release.
 
+[2.1.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/AsheTM/npm-cont_roller/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/AsheTM/npm-cont_roller/compare/v1.0.2...v2.0.0
 [1.0.2]: https://github.com/AsheTM/npm-cont_roller/compare/v1.0.1...v1.0.2
