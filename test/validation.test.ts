@@ -130,3 +130,28 @@ describe('.validate()', () => {
         expect(names.has('validate')).toBe(false);
     });
 });
+
+describe('$(schemas, handler)', () => {
+    it('validates, then runs the handler with the validated values', async () => {
+        const c = $({ body: object('name'), query: coerceN }, (req) => ({ name: req.body.name, n: req.query.n })).created();
+        const res = await request(app(c)).post('/users/1?n=3').send({ name: 'Ada' });
+        expect(res.status).toBe(201);
+        expect(res.body).toEqual({ name: 'Ada', n: 3 });
+    });
+
+    it('answers the default 400 on invalid data', async () => {
+        const c = $({ body: object('name') }, () => 1);
+        expect(await c.run({ body: {} })).toMatchObject({ status: 400, body: { error: 'Bad Request', issues: [{ path: 'body.name' }] } });
+    });
+
+    it('is the normal controller: guards still run before validation', async () => {
+        const c = $({ body: object('name') }, () => 1).guard(() => false, $.unauthorized());
+        expect((await c.run({ body: {} })).status).toBe(401);
+    });
+
+    it('checks its arguments', () => {
+        expect(() => $({ body: object('a') } as never)).toThrow('$(handler): handler must be a function');
+        expect(() => $({ body: object('a') }, 'x' as never)).toThrow('$(schemas, handler): handler must be a function');
+        expect(() => $({ headers: object('a') } as never, () => 1)).toThrow('$(schemas): unknown target "headers"');
+    });
+});

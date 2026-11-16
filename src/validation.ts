@@ -12,17 +12,17 @@ function isSchema(value: unknown): value is StandardSchemaV1 {
 }
 
 /** Throws at declaration time when `.validate(schemas, failure)` receives something unusable. */
-export function assertValidation(schemas: unknown, failure: unknown, method = 'validate'): asserts schemas is ValidationSchemas {
+export function assertValidation(schemas: unknown, failure: unknown, method = '.validate'): asserts schemas is ValidationSchemas {
     if (typeof schemas !== 'object' || schemas === null || Array.isArray(schemas))
-        throw new TypeError(`.${method}(schemas): schemas must be an object like { body: schema }`);
+        throw new TypeError(`${method}(schemas): schemas must be an object like { body: schema }`);
     for (const [target, schema] of Object.entries(schemas)) {
         if (!VALIDATION_TARGETS.includes(target as ValidationTarget))
-            throw new TypeError(`.${method}(schemas): unknown target "${target}" (expected params, query or body)`);
+            throw new TypeError(`${method}(schemas): unknown target "${target}" (expected params, query or body)`);
         if (schema !== undefined && !isSchema(schema))
-            throw new TypeError(`.${method}(schemas): "${target}" is not a Standard Schema (zod, valibot, arktype...)`);
+            throw new TypeError(`${method}(schemas): "${target}" is not a Standard Schema (zod, valibot, arktype...)`);
     }
     if (failure !== undefined && typeof failure !== 'function' && !isResult(failure))
-        throw new TypeError(`.${method}(schemas, failure): failure must be a $.* result (or a function returning one)`);
+        throw new TypeError(`${method}(schemas, failure): failure must be a $.* result (or a function returning one)`);
 }
 
 function formatPath(target: ValidationTarget, issue: StandardSchemaV1.Issue): string {

@@ -6,11 +6,23 @@ import { getConfig, setConfig, type Config } from './config.js';
 import { createResult, isResult, redirectResult, statusResult, type Result, type ResultOptions } from './result.js';
 import { createController } from './controller.js';
 import { createChain } from './chain.js';
+import { emptyState } from './settings.js';
+import { assertValidation } from './validation.js';
 import { STATUSES } from './status.generated.js';
 
 /** The `$` entry point: `$(handler)` creates a controller; static helpers live on `$`. */
 export interface Dollar {
+    /** Creates a controller: the Express middleware with chainable methods. */
     <T>(handler: Handler<T>): Controller<T>;
+    /**
+     * Creates a controller that validates the request first; the handler's `req` is typed from the schemas.
+     * Same as `$.validate(schemas).handle(handler)`.
+     *
+     * ```ts
+     * $({ body: User }, async (req) => db.users.create(req.body)).created()
+     * ```
+     */
+    <S extends ValidationSchemas, T>(schemas: S, handler: Handler<T, ValidatedRequest<S>>): Controller<T, ValidatedRequest<S>>;
     /** Alias of `$` itself, for `const { $ } = require(...)`. */
     readonly $: Dollar;
     /** Alias of `$` itself, for default-import interop. */
@@ -67,8 +79,14 @@ export type ResultHelpers = {
 
 export interface Dollar extends ResultHelpers {}
 
-function create<T>(handler: Handler<T>): Controller<T> {
-    return createController(handler);
+function create<T>(handlerOrSchemas: Handler<T> | ValidationSchemas, handler?: Handler<T>): Controller<T> {
+    if (typeof handlerOrSchemas === 'function' || handler === undefined)
+        return createController(handlerOrSchemas as Handler<T>);
+    // $(schemas, handler): same as $.validate(schemas).handle(handler)
+    assertValidation(handlerOrSchemas, undefined, '$');
+    const state = emptyState();
+    state.validations.push({ schemas: { ...handlerOrSchemas } });
+    return createController(handler, state, '$(schemas, handler)');
 }
 
 export const $ = create as unknown as Dollar;
