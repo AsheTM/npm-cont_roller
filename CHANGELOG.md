@@ -3,7 +3,7 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [2.2.0] - Unreleased
+## [2.2.0] - 2026-11-16
 
 ### Added
 - `.validate({ params, query, body }, failure?)`: validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype...), sync or async. Runs after the guards and before the handler; validated values replace `req.params`, `req.query` and `req.body`. Default failure: `400 { error: 'Bad Request', issues: [{ path, message }] }` (#67).
@@ -13,6 +13,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Changed
 - Types-only dependency on `@standard-schema/spec` (no runtime code) (#67).
+
+### Pre-releases
+- `2.2.0-beta.0`: tested from npm with Express 4 and 5, CommonJS and ESM, zod, valibot and arktype, TypeScript 5.0 to 6.0.
 
 ## [2.1.0] - 2026-11-16
 
