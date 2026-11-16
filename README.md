@@ -4,7 +4,7 @@
 [![CI](https://github.com/AsheTM/npm-cont_roller/actions/workflows/ci.yml/badge.svg)](https://github.com/AsheTM/npm-cont_roller/actions/workflows/ci.yml)
 
 jQuery-style controllers for Express: **return your data, chain the status, guard before and after.**
-Async, fully typed, zero runtime dependencies.
+Async, fully typed, validation with zod, valibot or arktype, zero runtime dependencies.
 
 ```ts
 import $ from '@ashetm/cont_roller';
@@ -106,6 +106,92 @@ $(async (req) => db.docs.find(req.params.id))
 - `failure` is a `$.*` result, or a function returning one. Default: `500 { error: 'Internal Server Error' }`.
 - Guards run in declaration order, the first failure wins. When a before-guard fails, the handler never runs.
 - After-guards are skipped when the handler returns a `$.*` result: the handler already decided.
+
+## Validation: `.validate(schemas)`
+
+Validate `params`, `query` and `body` with any [Standard Schema](https://standardschema.dev) library:
+[zod](https://zod.dev), [valibot](https://valibot.dev), [arktype](https://arktype.io)... Install the one you like;
+cont_roller does not depend on any of them.
+
+```ts
+import { z } from 'zod';
+
+const User = z.object({ name: z.string().min(1), age: z.coerce.number() });
+
+router.post('/users/:id', $(async (req) => db.users.update(req.params.id, req.body))
+    .validate({ body: User, params: z.object({ id: z.uuid() }) })
+);
+```
+
+- The validated values **replace** `req.params`, `req.query` and `req.body`, so coercions and defaults apply
+  (`age: '42'` becomes `42`).
+- Validators may be async. Several `.validate()` calls run in order; the first failure wins.
+- On invalid data the handler does not run, and the response lists the problems of every field:
+
+```text
+400 { "error": "Bad Request", "issues": [{ "path": "body.name", "message": "Too small: expected string to have >=1 characters" }] }
+```
+
+To answer something else, pass a failure, like for guards: a `$.*` result, or a function receiving the issues.
+
+```ts
+$(handler).validate({ body: User }, (issues, req) => $.unprocessableEntity({ invalid: issues.map((i) => i.path) }))
+```
+
+### Typed `req`: `$(schemas, handler)` or `$.validate(schemas).handle(handler)`
+
+With `$(handler).validate(...)`, the handler is written before the schemas, so TypeScript cannot type its `req`
+from them (the validation still runs). To get `req.body` typed from the schema, give the schemas **first**:
+
+```ts
+router.post('/users', $({ body: User }, async (req) => {
+    req.body.age;                                   // number, from the schema
+    return db.users.create(req.body);
+}).created());
+
+// or, as a chain (see "Steps first" below)
+router.post('/users', $.validate({ body: User }).handle(async (req) => db.users.create(req.body)).created());
+```
+
+## Steps first: `$.guard(...)...handle(handler)`
+
+The same controller can be written in the order its steps run, with the handler in the middle.
+`.handle()` has an alias, `.do()`.
+
+```ts
+// handler first
+$(async (req) => db.docs.create(req.body))
+    .guard((req) => !!req.user, $.unauthorized())
+    .validate({ body: Doc })
+    .if((req, doc) => !!doc, $.notFound());
+
+// steps first: same controller, and req.body is typed from Doc
+$.guard((req) => !!req.user, $.unauthorized())
+    .validate({ body: Doc })
+    .handle(async (req) => db.docs.create(req.body))      // or .do(...)
+    .if((req, doc) => !!doc, $.notFound());
+```
+
+- Start with `$.guard()`, `$.checkBefore()` or `$.validate()`. Before the handler you can also set the status
+  (`.created()`, `._201()`, `.status(201)`), `.header()`, `.cookie()` and `.type()`.
+- `.handle(handler)` returns the normal controller: `.if()`, `.run()`, and every other method work as usual.
+- The chain is not a middleware until `.handle()` is called (Express and TypeScript reject it).
+- Each step returns a **new** chain, so a chain can be shared between routes:
+
+```ts
+const loggedIn = $.guard((req) => !!req.user, $.unauthorized());
+
+router.get('/me', loggedIn.handle((req) => req.user));
+router.post('/posts', loggedIn.validate({ body: Post }).handle((req) => db.posts.create(req.body)).created());
+```
+
+### Run order
+
+Whatever the style and the order of the calls, a request always goes through:
+
+**guards** (`.guard`, `.checkBefore`) → **validation** (`.validate`) → **handler** → **after-checks** (`.if`, `.checkAfter`)
+
+So a logged-out user always gets the guard's 401, never a 400 about their data, and a guard's `req` is the raw request.
 
 ## Per-request context: `ctx`
 
@@ -235,7 +321,8 @@ In TypeScript, `body` is `unknown` (it can be the data or a failure body); narro
 ## TypeScript
 
 Everything is typed: status names and codes are autocompleted, the handler data flows into `.if()` checks,
-and `$.ok(body)` keeps the body type (`Result<B>`).
+`$.ok(body)` keeps the body type (`Result<B>`), and `req` is typed from the validation schemas
+with `$(schemas, handler)` or `$.validate(schemas).handle(handler)`.
 
 ```ts
 import $, { type Controller, type Result, HttpError } from '@ashetm/cont_roller';
@@ -255,8 +342,15 @@ CommonJS projects: `import $ = require('@ashetm/cont_roller')`.
 | `.cookie(name, value, options?)`             | `$.redirect(url, code = 302, options?)`      |
 | `.type(type)`                                | `$.error(status, body?, options?)`           |
 | `.guard(check, failure?)` / `.checkBefore()` | `$.HttpError`, `$.isHttpError(value)`        |
-| `.if(check, failure?)` / `.checkAfter()`     | `$.isResult(value)`                          |
-| `.run(req?)` (testing, no HTTP)              | `$.config(options?)`, `$.STATUSES`           |
+| `.validate(schemas, failure?)`               | `$.isResult(value)`                          |
+| `.if(check, failure?)` / `.checkAfter()`     | `$.config(options?)`, `$.STATUSES`           |
+| `.run(req?)` (testing, no HTTP)              |                                              |
+
+| Other ways to start                                                       | Gives                                         |
+|---------------------------------------------------------------------------|-----------------------------------------------|
+| `$(schemas, handler)`                                                     | a controller, `req` typed from the schemas    |
+| `$.guard()` / `$.checkBefore()` / `$.validate()` ... `.handle(handler)`   | a steps-first chain, then a controller        |
+| `.do(handler)`                                                            | alias of `.handle(handler)`                   |
 
 | `ctx` (handler 2nd argument)                                                       |
 |------------------------------------------------------------------------------------|
