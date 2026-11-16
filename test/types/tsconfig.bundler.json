@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "skipLibCheck": false,
+    "noEmit": true
+  },
+  "files": ["esm.mts"]
+}
