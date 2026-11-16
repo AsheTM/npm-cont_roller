@@ -96,6 +96,25 @@ describe('README examples', () => {
         expect(viaCtx.headers['content-type']).toMatch(/^text\/plain/);
     });
 
+    it('testing with controller.run(req)', async () => {
+        const db = { users: { find: async (id: unknown) => (id === '1' ? { id: '1', name: 'Ada' } : null) } };
+        const getUser = $(async (req) => db.users.find(req.params.id))
+            .header('Cache-Control', 'no-store')
+            .guard((req) => !!req.headers.authorization, $.unauthorized())
+            .if((_req, user) => !!user, $.notFound({ error: 'User not found' }));
+
+        expect(await getUser.run({ params: { id: '1' }, headers: { authorization: 'Bearer x' } })).toEqual({
+            status: 200, body: { id: '1', name: 'Ada' }, headers: { 'cache-control': 'no-store' }, cookies: [], type: undefined
+        });
+        expect((await getUser.run({ params: { id: '1' } })).status).toBe(401);
+        expect((await getUser.run({ params: { id: '9' }, headers: { authorization: 'x' } })).body).toEqual({ error: 'User not found' });
+
+        const crashing = $(async () => { throw new Error('db down'); });
+        await expect(crashing.run()).rejects.toThrow('db down');
+        $.config({ errors: 'respond' });
+        expect(await crashing.run()).toMatchObject({ status: 500, body: { error: 'db down' } });
+    });
+
     it('$(handler).ok() vs $.ok(body)', () => {
         const controller = $(() => 1);
         expect(controller.ok()).toBe(controller);

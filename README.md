@@ -183,6 +183,55 @@ $.config();                        // reads the current options
 
 If the response was already sent, errors always go to `next(err)`.
 
+## Testing: `controller.run(req)`
+
+Run a controller **without HTTP**: no Express app, no supertest, no port. `.run()` goes through the same
+steps as a real request (guards, handler, results, `$.error()`) and resolves with the response as a plain object.
+
+```ts
+const getUser = $(async (req) => db.users.find(req.params.id))
+    .header('Cache-Control', 'no-store')
+    .guard((req) => !!req.headers.authorization, $.unauthorized())
+    .if((req, user) => !!user, $.notFound({ error: 'User not found' }));
+
+const res = await getUser.run({ params: { id: '1' }, headers: { authorization: 'Bearer x' } });
+// {
+//     status:  200,
+//     body:    { id: '1', name: 'Ada' },
+//     headers: { 'cache-control': 'no-store' },
+//     cookies: [],
+//     type:    undefined
+// }
+
+expect((await getUser.run({ params: { id: '1' } })).status).toBe(401);                       // guard failed
+expect((await getUser.run({ params: { id: '9' }, headers: { authorization: 'x' } })).body)
+    .toEqual({ error: 'User not found' });
+```
+
+The request is a plain object with only what the controller reads: `params`, `query`, `body`, `headers`,
+`cookies`, `method`, or custom fields such as `user`. Missing fields default to empty values, and header names
+are case-insensitive.
+
+| Result field | Content |
+| --- | --- |
+| `status` | the status code |
+| `body` | the raw value (not serialized to JSON); `undefined` for 204, 205 and 304 |
+| `headers` | response headers, with lowercase names |
+| `cookies` | `{ name, value, options }` in order; cleared cookies have `clear: true` |
+| `type` | the content type set by the builder, `ctx` or result, if any |
+
+Unexpected errors follow `$.config`: by default the promise **rejects** with the error (the equivalent of
+`next(err)`); with `$.config({ errors: 'respond' })` it resolves with `{ status: 500, body: { error: message } }`.
+
+```ts
+await expect(crashing.run()).rejects.toThrow('db down');
+```
+
+In TypeScript, `body` is `unknown` (it can be the data or a failure body); narrow it with `run<User>()`.
+
+> `.run()` tests the controller itself. Keep a few supertest tests for what happens around it
+> (routing, body parsers, other middlewares).
+
 ## TypeScript
 
 Everything is typed: status names and codes are autocompleted, the handler data flows into `.if()` checks,
@@ -207,7 +256,7 @@ CommonJS projects: `import $ = require('@ashetm/cont_roller')`.
 | `.type(type)`                                | `$.error(status, body?, options?)`           |
 | `.guard(check, failure?)` / `.checkBefore()` | `$.HttpError`, `$.isHttpError(value)`        |
 | `.if(check, failure?)` / `.checkAfter()`     | `$.isResult(value)`                          |
-|                                              | `$.config(options?)`, `$.STATUSES`           |
+| `.run(req?)` (testing, no HTTP)              | `$.config(options?)`, `$.STATUSES`           |
 
 | `ctx` (handler 2nd argument)                                                       |
 |------------------------------------------------------------------------------------|
