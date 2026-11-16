@@ -1,10 +1,21 @@
-import type { CookieOptions } from 'express';
+import type { CookieOptions, Response } from 'express';
 import type { AnyStatusCode, ContentType, Context } from './types.js';
 import { addCookie, setHeaders, type HeaderValue, type Headers, type ResponseParts } from './response.js';
 import { assertStatusCode } from './status.js';
 
-/** Creates the per-request context writing into `parts` (a per-request copy). */
-export function createContext(parts: ResponseParts): Context {
+/** Contexts whose `ctx.res` was read by the handler. */
+const resUsed = new WeakSet<Context>();
+
+/** True when the handler read `ctx.res`. */
+export function usedResponse(ctx: Context): boolean {
+    return resUsed.has(ctx);
+}
+
+/**
+ * Creates the per-request context writing into `parts` (a per-request copy).
+ * `res` is the Express response; without it (`.run()`), reading `ctx.res` throws.
+ */
+export function createContext(parts: ResponseParts, res?: Response): Context {
     const ctx: Context = {
         header(nameOrHeaders: string | Headers, value?: HeaderValue) {
             setHeaders(parts, nameOrHeaders, value);
@@ -32,5 +43,14 @@ export function createContext(parts: ResponseParts): Context {
             return ctx;
         }
     } as Context;
+    Object.defineProperty(ctx, 'res', {
+        enumerable: false,
+        get(): Response {
+            if (res === undefined)
+                throw new Error('ctx.res is not available in .run(): test this controller over HTTP (supertest)');
+            resUsed.add(ctx);
+            return res;
+        }
+    });
     return ctx;
 }

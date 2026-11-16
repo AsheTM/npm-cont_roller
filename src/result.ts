@@ -17,6 +17,7 @@ export interface ResultOptions {
  * Return it from a handler, or pass it to a guard. Immutable: safe to reuse across requests.
  */
 export interface Result<B = unknown> {
+    /** The status; 200 for `$.file()`, `$.download()`, `$.render()` and `$.stream()`, which use the builder / ctx status. */
     readonly status:    number;
     readonly body:      B;
     /** @internal */
@@ -25,17 +26,20 @@ export interface Result<B = unknown> {
     readonly [RESULT_BRAND]: true;
 }
 
-export function createResult<B>(status: number, body: B, options?: ResultOptions): Result<B> {
-    assertStatusCode(status);
+/** `status` undefined: the result keeps the builder / ctx status (file, download, render, stream). */
+export function createResult<B>(status: number | undefined, body: B, options?: ResultOptions): Result<B> {
     const parts = emptyParts();
-    parts.status = status;
+    if (status !== undefined) {
+        assertStatusCode(status);
+        parts.status = status;
+    }
     if (options?.headers)
         setHeaders(parts, options.headers);
     for (const cookie of options?.cookies ?? [])
         addCookie(parts, cookie.name, cookie.value, cookie.options);
     if (options?.type !== undefined)
         parts.type = options.type;
-    return Object.freeze({ status, body, parts, [RESULT_BRAND]: true as const });
+    return Object.freeze({ status: status ?? 200, body, parts, [RESULT_BRAND]: true as const });
 }
 
 /** True when `value` was created by a `$.*` helper (works across ESM/CJS copies). */

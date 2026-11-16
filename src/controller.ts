@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import type { AfterCheck, Controller, ControllerState, GuardFailure, Handler } from './types.js';
 import { cloneParts, send } from './response.js';
 import { errorMode } from './config.js';
-import { execute, respondWithError } from './pipeline.js';
+import { execute, respondWithError, respondWithSendError, type Outcome } from './pipeline.js';
 import { run, type RunRequest } from './run.js';
 import { assertCheck, copyState, emptyState, settingMethods } from './settings.js';
 
@@ -20,15 +20,31 @@ export function createController<T>(handler: Handler<T>, initial?: ControllerSta
     const state: ControllerState = initial ? copyState(initial) : emptyState();
 
     const middleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-        try {
-            const { parts, body } = await execute(state, handler, req);
-            send(res, parts, body);
-        } catch (error) {
-            // Unexpected error from the pipeline, or while writing the response
+        // Unexpected error from the pipeline, or while sending (missing file, view error...)
+        const fail = async (error: unknown, sending: boolean): Promise<void> => {
             if (res.headersSent || errorMode() !== 'respond')
                 return next(error);
-            const { parts, body } = respondWithError(cloneParts(state.defaults), error);
-            send(res, parts, body);
+            const parts = cloneParts(state.defaults);
+            const outcome = sending ? respondWithSendError(parts, error) : respondWithError(parts, error);
+            try {
+                await send(res, outcome.parts, outcome.body);
+            } catch (sendError) {
+                next(sendError);
+            }
+        };
+
+        let outcome: Outcome;
+        try {
+            outcome = await execute(state, handler, req, res);
+        } catch (error) {
+            return fail(error, false);
+        }
+        if (outcome.handled)
+            return;
+        try {
+            await send(res, outcome.parts, outcome.body);
+        } catch (error) {
+            return fail(error, true);
         }
     };
 

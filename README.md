@@ -54,6 +54,7 @@ The handler `(req, ctx) => value` may be sync or `async`. Its return value is th
 |---------------------------------|-------------------------------------------|
 | object, array, `null`, number   | JSON                                      |
 | string, `Buffer`                | sent as-is (`res.send`)                   |
+| a stream (Node or web)          | piped                                     |
 | `undefined`                     | empty body                                |
 | a `$.*` result                  | that result (status, body, headers...)    |
 
@@ -208,6 +209,49 @@ $(async (req, ctx) => {
 })
 ```
 
+## Files, views and streams
+
+```ts
+$((req) => $.file(req.params.name, { root: '/data/public', maxAge: '1d' }))   // res.sendFile, alias $.sendFile
+$(() => $.download('/data/report.csv', 'report-2026.csv'))                    // res.download (attachment)
+$((req) => $.render('profile', { user: req.user }))                           // res.render (the app's view engine)
+$(() => $.stream(fs.createReadStream('/data/big.csv'), { type: 'text/csv' })) // pipes a stream, alias $.pipe
+$(() => fs.createReadStream('/data/big.csv')).type('text/csv')                // same: returned streams are piped
+```
+
+- These helpers return results, like `$.ok()`: return them from a handler, or use them as a guard failure.
+  They have **no status of their own**: the builder or `ctx` status applies (200 by default).
+- Their last argument also takes `headers`, `cookies` and `type`; `$.file()` and `$.download()` also take Express's
+  `sendFile` options (`root`, `maxAge`, `dotfiles`, `lastModified`...).
+- `$.file()` sends any path it receives: with user input, use `root` and validate the name
+  (`.validate({ params: z.object({ name: z.string().regex(/^[\w.-]+$/) }) })`).
+- Streams can be Node readable streams or web `ReadableStream`s (`fetch(...).body`).
+
+Errors while sending follow `$.config`. By default they go to `next(err)`, and Express answers 404 for a missing file.
+With `errors: 'respond'`, a missing file is answered `404 { error: 'Not Found' }` (never the path), and other errors 500.
+If a stream fails after it started, the connection is closed and the error goes to `next(err)`.
+If the client goes away, the stream is stopped, and nothing is reported.
+
+### Anything else: `ctx.res`
+
+`ctx.res` is the Express response, for what the helpers do not cover: Server-Sent Events, custom writes, other libraries.
+
+```ts
+$(async (req, ctx) => {
+    ctx.res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    for await (const event of events)
+        ctx.res.write(`data: ${JSON.stringify(event)}\n\n`);
+    ctx.res.end();
+})
+```
+
+When the handler reads `ctx.res` and returns nothing (`undefined`), the handler is answering: cont_roller sends
+nothing and skips the after-checks. It also sends nothing when the response was already sent.
+If the handler returns a value, it is sent as usual.
+
+> Prefer `ctx.header()`, `ctx.cookie()`, `ctx.status()` and the `$.*` helpers when they are enough: they can be tested
+> with `.run()`, where `ctx.res` does not exist (reading it throws).
+
 ## Result helpers: `$.ok(body)`, `$.notFound(body)`, …
 
 `$` has one static helper per status code. A helper returns a **result**: a complete response
@@ -302,6 +346,7 @@ are case-insensitive.
 | --- | --- |
 | `status` | the status code |
 | `body` | the raw value (not serialized to JSON); `undefined` for 204, 205 and 304 |
+| | files, downloads and views are not read or rendered: `{ file, options }`, `{ download, filename, options }`, `{ render, locals }`; a stream is returned as is |
 | `headers` | response headers, with lowercase names |
 | `cookies` | `{ name, value, options }` in order; cleared cookies have `clear: true` |
 | `type` | the content type set by the builder, `ctx` or result, if any |
@@ -312,6 +357,8 @@ Unexpected errors follow `$.config`: by default the promise **rejects** with the
 ```ts
 await expect(crashing.run()).rejects.toThrow('db down');
 ```
+
+Controllers that read `ctx.res` cannot run without HTTP: test them with supertest.
 
 In TypeScript, `body` is `unknown` (it can be the data or a failure body); narrow it with `run<User>()`.
 
@@ -344,7 +391,10 @@ CommonJS projects: `import $ = require('@ashetm/cont_roller')`.
 | `.guard(check, failure?)` / `.checkBefore()` | `$.HttpError`, `$.isHttpError(value)`        |
 | `.validate(schemas, failure?)`               | `$.isResult(value)`                          |
 | `.if(check, failure?)` / `.checkAfter()`     | `$.config(options?)`, `$.STATUSES`           |
-| `.run(req?)` (testing, no HTTP)              |                                              |
+| `.run(req?)` (testing, no HTTP)              | `$.file(path, options?)` / `$.sendFile()`    |
+|                                              | `$.download(path, filename?, options?)`      |
+|                                              | `$.render(view, locals?, options?)`          |
+|                                              | `$.stream(source, options?)` / `$.pipe()`    |
 
 | Other ways to start                                                       | Gives                                         |
 |---------------------------------------------------------------------------|-----------------------------------------------|
@@ -355,6 +405,7 @@ CommonJS projects: `import $ = require('@ashetm/cont_roller')`.
 | `ctx` (handler 2nd argument)                                                       |
 |------------------------------------------------------------------------------------|
 | `.header()`, `.cookie()`, `.clearCookie(name, options?)`, `.type()`, `.status()`   |
+| `.res`: the Express response (the handler answers itself when it returns nothing)  |
 
 ## Versions and support
 

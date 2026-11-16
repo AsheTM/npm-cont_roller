@@ -3,6 +3,22 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] - 2026-11-16
+
+### Added
+- `$.file()` (alias `$.sendFile()`), `$.download()` and `$.render()`: results sent with Express `res.sendFile()`, `res.download()` and `res.render()`. They keep the builder / ctx status; in `.run()` the body describes what would be sent (#79).
+- Returned Node and web streams are piped to the response; `$.stream()` (alias `$.pipe()`) (#80).
+- `ctx.res`: the Express response. When the handler reads it and returns nothing, or when the response is already sent, cont_roller sends nothing (#81).
+- Types `FileOptions`, `SendFileOptions`, `FileBody`, `DownloadBody`, `RenderBody`, `StreamSource` (#79, #80).
+
+### Changed
+- A returned stream was serialized as JSON; it is now piped (#80).
+- Errors while sending (missing file, view error, stream error) follow `$.config`. In `respond` mode, a 4xx from Express is answered with its reason phrase, never the file path (#79).
+- An error thrown after the response started goes to `next(err)` (#81).
+
+### Pre-releases
+- `2.3.0-beta.0`: tested from npm with Express 4 and 5, CommonJS and ESM, TypeScript 5.0 to 6.0 (files, missing files in both error modes, downloads, views, Node and web streams, client disconnects, Server-Sent Events).
+
 ## [2.2.0] - 2026-11-16
 
 ### Added
@@ -87,6 +103,7 @@ Rewrite in TypeScript. See [MIGRATION.md](MIGRATION.md) for every change and how
 
 - First release.
 
+[2.3.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/AsheTM/npm-cont_roller/compare/v2.0.0...v2.0.1
