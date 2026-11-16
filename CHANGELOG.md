@@ -3,6 +3,20 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-11-16
+
+### Added
+- `.validate({ params, query, body }, failure?)`: validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype...), sync or async. Runs after the guards and before the handler; validated values replace `req.params`, `req.query` and `req.body`. Default failure: `400 { error: 'Bad Request', issues: [{ path, message }] }` (#67).
+- Steps-first chain: `$.guard()`, `$.checkBefore()` or `$.validate()`, then `.handle(handler)` (alias `.do(handler)`), with the handler's `req` typed from the schemas. Each step returns a new chain, so chains can be shared between routes (#68).
+- `$(schemas, handler)`: validation with a typed `req` in one call (#69).
+- Types `ValidationSchemas`, `ValidationIssue`, `ValidationFailure`, `ValidationTarget`, `ValidatedRequest`, `ControllerChain`; `Controller<T, Req>` and `Handler<T, Req>` take the request type, which defaults to Express's `Request` (#67, #68).
+
+### Changed
+- Types-only dependency on `@standard-schema/spec` (no runtime code) (#67).
+
+### Pre-releases
+- `2.2.0-beta.0`: tested from npm with Express 4 and 5, CommonJS and ESM, zod, valibot and arktype, TypeScript 5.0 to 6.0.
+
 ## [2.1.0] - 2026-11-16
 
 ### Added
@@ -73,6 +87,7 @@ Rewrite in TypeScript. See [MIGRATION.md](MIGRATION.md) for every change and how
 
 - First release.
 
+[2.2.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/AsheTM/npm-cont_roller/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/AsheTM/npm-cont_roller/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/AsheTM/npm-cont_roller/compare/v1.0.2...v2.0.0

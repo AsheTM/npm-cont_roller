@@ -1,14 +1,28 @@
-import type { AnyStatusCode, Controller, Handler } from './types.js';
+import type { Request } from 'express';
+import type { AnyStatusCode, BeforeCheck, Controller, ControllerChain, GuardFailure, Handler, ValidatedRequest, ValidationFailure, ValidationSchemas } from './types.js';
 import type { Status } from './status.generated.js';
 import { createHttpError, HttpError, isHttpError } from './error.js';
 import { getConfig, setConfig, type Config } from './config.js';
 import { createResult, isResult, redirectResult, statusResult, type Result, type ResultOptions } from './result.js';
 import { createController } from './controller.js';
+import { createChain } from './chain.js';
+import { emptyState } from './settings.js';
+import { assertValidation } from './validation.js';
 import { STATUSES } from './status.generated.js';
 
 /** The `$` entry point: `$(handler)` creates a controller; static helpers live on `$`. */
 export interface Dollar {
+    /** Creates a controller: the Express middleware with chainable methods. */
     <T>(handler: Handler<T>): Controller<T>;
+    /**
+     * Creates a controller that validates the request first; the handler's `req` is typed from the schemas.
+     * Same as `$.validate(schemas).handle(handler)`.
+     *
+     * ```ts
+     * $({ body: User }, async (req) => db.users.create(req.body)).created()
+     * ```
+     */
+    <S extends ValidationSchemas, T>(schemas: S, handler: Handler<T, ValidatedRequest<S>>): Controller<T, ValidatedRequest<S>>;
     /** Alias of `$` itself, for `const { $ } = require(...)`. */
     readonly $: Dollar;
     /** Alias of `$` itself, for default-import interop. */
@@ -34,6 +48,25 @@ export interface Dollar {
     config(): Readonly<Config>;
     /** Sets global options, chainable: `$.config({ errors: 'respond' })`. */
     config(options: Partial<Config>): Dollar;
+
+    /**
+     * Starts a steps-first chain with a check run before the handler; end it with `.handle(handler)`.
+     *
+     * ```ts
+     * $.guard((req) => !!req.user, $.unauthorized()).handle(async (req) => db.docs.list())
+     * ```
+     */
+    guard(check: BeforeCheck, failure?: GuardFailure<[Request]>): ControllerChain;
+    /** Alias of `$.guard()`. */
+    checkBefore(check: BeforeCheck, failure?: GuardFailure<[Request]>): ControllerChain;
+    /**
+     * Starts a steps-first chain with a validation step; the handler's `req` is typed from the schemas.
+     *
+     * ```ts
+     * $.validate({ body: User }).handle(async (req) => db.users.create(req.body))
+     * ```
+     */
+    validate<S extends ValidationSchemas>(schemas: S, failure?: ValidationFailure): ControllerChain<ValidatedRequest<S>>;
 }
 
 /**
@@ -46,14 +79,20 @@ export type ResultHelpers = {
 
 export interface Dollar extends ResultHelpers {}
 
-function create<T>(handler: Handler<T>): Controller<T> {
-    return createController(handler);
+function create<T>(handlerOrSchemas: Handler<T> | ValidationSchemas, handler?: Handler<T>): Controller<T> {
+    if (typeof handlerOrSchemas === 'function' || handler === undefined)
+        return createController(handlerOrSchemas as Handler<T>);
+    // $(schemas, handler): same as $.validate(schemas).handle(handler)
+    assertValidation(handlerOrSchemas, undefined, '$');
+    const state = emptyState();
+    state.validations.push({ schemas: { ...handlerOrSchemas } });
+    return createController(handler, state, '$(schemas, handler)');
 }
 
 export const $ = create as unknown as Dollar;
 
 /** Static members of `$`; generated status names must never collide with them. */
-export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect', 'isResult', 'error', 'HttpError', 'isHttpError', 'config'] as const;
+export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect', 'isResult', 'error', 'HttpError', 'isHttpError', 'config', 'guard', 'checkBefore', 'validate'] as const;
 
 const helpers: Record<string, unknown> = {};
 for (const { code, name } of STATUSES)
@@ -65,7 +104,19 @@ function config(options?: Partial<Config>): Readonly<Config> | Dollar {
     return $;
 }
 
-Object.assign($, helpers, { status: statusResult, redirect: redirectResult, isResult, error: createHttpError, isHttpError, config });
+const start = createChain();
+
+Object.assign($, helpers, {
+    status:         statusResult,
+    redirect:       redirectResult,
+    isResult,
+    error:          createHttpError,
+    isHttpError,
+    config,
+    guard:          start.guard,
+    checkBefore:    start.checkBefore,
+    validate:       start.validate
+});
 
 Object.defineProperties($, {
     $:          { value: $, enumerable: true },

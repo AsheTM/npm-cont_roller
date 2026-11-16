@@ -2,6 +2,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
 import express, { type Request } from 'express';
+import { z } from 'zod';
 import $ from '../src/index.js';
 import { resetConfig } from '../src/config.js';
 
@@ -119,5 +120,69 @@ describe('README examples', () => {
         const controller = $(() => 1);
         expect(controller.ok()).toBe(controller);
         expect($.ok({ a: 1 }).status).toBe(200);
+    });
+
+    describe('validation and steps first', () => {
+        const User = z.object({ name: z.string().min(1), age: z.coerce.number() });
+        const Doc = z.object({ title: z.string() });
+        const userOf2 = (req: Request) => (req as Request & { user?: string }).user;
+        const withUser = (req: Request, _res: unknown, next: () => void) => {
+            if (req.headers['x-user'])
+                (req as Request & { user?: string }).user = req.headers['x-user'] as string;
+            next();
+        };
+
+        function validationApp() {
+            const a = express();
+            a.use(express.json(), withUser as express.RequestHandler);
+            a.post('/users/:id', $(async (req) => ({ id: req.params.id, ...req.body }))
+                .validate({ body: User, params: z.object({ id: z.uuid() }) }));
+            a.post('/custom', $(() => 1)
+                .validate({ body: User }, (issues) => $.unprocessableEntity({ invalid: issues.map((i) => i.path) })));
+            a.post('/typed', $({ body: User }, async (req) => ({ age: req.body.age + 1 })).created());
+            a.post('/chain', $.validate({ body: User }).handle(async (req) => req.body).created());
+            a.post('/docs', $.guard((req) => !!userOf2(req), $.unauthorized())
+                .validate({ body: Doc })
+                .do(async (req) => ({ id: 'd1', ...req.body }))
+                .if((_req, doc) => !!doc, $.notFound()));
+            const loggedIn = $.guard((req) => !!userOf2(req), $.unauthorized());
+            a.get('/me', loggedIn.handle((req) => ({ user: userOf2(req) })));
+            a.post('/posts', loggedIn.validate({ body: Doc }).handle((req) => req.body).created());
+            return a;
+        }
+        const ID = '8b3e7f1e-1c2d-4e5f-9a6b-7c8d9e0f1a2b';
+
+        it('.validate() replaces req with the validated values', async () => {
+            const res = await request(validationApp()).post(`/users/${ID}`).send({ name: 'Ada', age: '42' });
+            expect(res.body).toEqual({ id: ID, name: 'Ada', age: 42 });
+        });
+
+        it('default failure lists the issues', async () => {
+            const res = await request(validationApp()).post(`/users/${ID}`).send({ name: '', age: '1' });
+            expect(res.status).toBe(400);
+            expect(res.body).toEqual({ error: 'Bad Request', issues: [{ path: 'body.name', message: 'Too small: expected string to have >=1 characters' }] });
+        });
+
+        it('custom failure', async () => {
+            const res = await request(validationApp()).post('/custom').send({});
+            expect(res.status).toBe(422);
+            expect(res.body).toEqual({ invalid: ['body.name', 'body.age'] });
+        });
+
+        it('typed req: $(schemas, handler) and $.validate().handle()', async () => {
+            expect((await request(validationApp()).post('/typed').send({ name: 'A', age: '1' })).body).toEqual({ age: 2 });
+            const res = await request(validationApp()).post('/chain').send({ name: 'A', age: '5' });
+            expect(res.status).toBe(201);
+            expect(res.body).toEqual({ name: 'A', age: 5 });
+        });
+
+        it('steps first, run order and shared chains', async () => {
+            expect((await request(validationApp()).post('/docs').send({})).status).toBe(401);          // guard before validation
+            expect((await request(validationApp()).post('/docs').set('X-User', 'a').send({})).status).toBe(400);
+            expect((await request(validationApp()).post('/docs').set('X-User', 'a').send({ title: 't' })).body).toEqual({ id: 'd1', title: 't' });
+            expect((await request(validationApp()).get('/me').set('X-User', 'a')).body).toEqual({ user: 'a' });
+            expect((await request(validationApp()).post('/posts').send({ title: 't' })).status).toBe(401);
+            expect((await request(validationApp()).post('/posts').set('X-User', 'a').send({ title: 't' })).status).toBe(201);
+        });
     });
 });
