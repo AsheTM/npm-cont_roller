@@ -15,4 +15,13 @@ $.config({ errors: 'respond' }).config({ errors: 'next' });
 const mode: 'next' | 'respond' = $.config().errors;
 void mode;
 
+import type { StandardSchemaV1 } from '@standard-schema/spec';
+declare const Body: StandardSchemaV1<unknown, { title: string }>;
+const chained: $.Controller<{ title: string }, $.ValidatedRequest<{ body: typeof Body }>> = $.guard(() => true)
+    .validate({ body: Body })
+    .do((req) => ({ title: req.body.title }));
+// @ts-expect-error: not in the schema output
+$.validate({ body: Body }).handle((req) => req.body.nope);
+void chained;
+
 export = c;

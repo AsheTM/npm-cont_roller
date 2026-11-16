@@ -40,6 +40,41 @@ void $(() => 1).run();
 // @ts-expect-error: params must be an object
 void $(() => 1).run({ params: 42 });
 
+// Validation and the steps-first chain (#67, #68)
+import type { StandardSchemaV1 } from '@standard-schema/spec';
+import type { ControllerChain, ValidationIssue } from '@ashetm/cont_roller';
+declare const User: StandardSchemaV1<unknown, { name: string; age: number }>;
+declare const Id: StandardSchemaV1<unknown, { id: string }>;
+
+const created = $.guard((req) => !!req.headers.authorization, $.unauthorized())
+    .validate({ body: User })
+    .validate({ params: Id })
+    .created()
+    .header('X-A', '1')
+    .handle(async (req) => {
+        const name: string = req.body.name;
+        const id: string = req.params.id;
+        return { name, id, auth: req.headers.authorization };
+    })
+    .if((req, data) => req.body.age > 0 && data.name.length > 0, $.badRequest());
+const chain: ControllerChain = $.checkBefore(() => true);
+chain.do((req) => req.body);
+$.validate({ query: Id }, (issues: ValidationIssue[], req) => $.badRequest({ issues, url: req.url }))
+    .do((req) => req.query.id.toUpperCase());
+// @ts-expect-error: not in the schema output
+$.validate({ body: User }).handle((req) => req.body.missing);
+// @ts-expect-error: unknown validation target
+$.validate({ headers: User });
+// @ts-expect-error: a chain is not a middleware
+const notMiddleware: import('express').RequestHandler = $.guard(() => true);
+// @ts-expect-error: no .if() before the handler
+$.guard(() => true).if(() => true);
+// Handler-first: runtime validation, after-checks see the validated request
+$(async () => ({ ok: true }))
+    .validate({ body: User })
+    .if((req) => req.body.age > 18, $.forbidden());
+
+export { created, notMiddleware };
 export default c;
 export { ran };
 export { msg };
