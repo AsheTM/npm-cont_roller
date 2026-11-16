@@ -3,7 +3,7 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-11-15
 
 Rewrite in TypeScript. See [MIGRATION.md](MIGRATION.md) for every change and how to upgrade.
 
@@ -27,7 +27,10 @@ Rewrite in TypeScript. See [MIGRATION.md](MIGRATION.md) for every change and how
 - `throw $.error(status, body?)`, `HttpError`, `$.isHttpError()` (#32).
 - Guards before the handler: `.guard()` / `.checkBefore()`; after: `.if()` / `.checkAfter()`, repeatable (#33).
 - `$.config({ errors: 'respond' })` (#34).
-- TypeScript declarations for ESM and CommonJS; no runtime dependencies (#26).
+- TypeScript declarations for ESM and CommonJS, including type imports from CommonJS (#26, #49); no runtime dependencies.
+
+### Pre-releases
+- `2.0.0-beta.0`, `2.0.0-beta.1` (CommonJS type exports fix, #49).
 
 ## [1.0.2] - 2026-11-15
 
