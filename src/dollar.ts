@@ -1,9 +1,11 @@
-import type { AnyStatusCode, Controller, Handler } from './types.js';
+import type { Request } from 'express';
+import type { AnyStatusCode, BeforeCheck, Controller, ControllerChain, GuardFailure, Handler, ValidatedRequest, ValidationFailure, ValidationSchemas } from './types.js';
 import type { Status } from './status.generated.js';
 import { createHttpError, HttpError, isHttpError } from './error.js';
 import { getConfig, setConfig, type Config } from './config.js';
 import { createResult, isResult, redirectResult, statusResult, type Result, type ResultOptions } from './result.js';
 import { createController } from './controller.js';
+import { createChain } from './chain.js';
 import { STATUSES } from './status.generated.js';
 
 /** The `$` entry point: `$(handler)` creates a controller; static helpers live on `$`. */
@@ -34,6 +36,25 @@ export interface Dollar {
     config(): Readonly<Config>;
     /** Sets global options, chainable: `$.config({ errors: 'respond' })`. */
     config(options: Partial<Config>): Dollar;
+
+    /**
+     * Starts a steps-first chain with a check run before the handler; end it with `.handle(handler)`.
+     *
+     * ```ts
+     * $.guard((req) => !!req.user, $.unauthorized()).handle(async (req) => db.docs.list())
+     * ```
+     */
+    guard(check: BeforeCheck, failure?: GuardFailure<[Request]>): ControllerChain;
+    /** Alias of `$.guard()`. */
+    checkBefore(check: BeforeCheck, failure?: GuardFailure<[Request]>): ControllerChain;
+    /**
+     * Starts a steps-first chain with a validation step; the handler's `req` is typed from the schemas.
+     *
+     * ```ts
+     * $.validate({ body: User }).handle(async (req) => db.users.create(req.body))
+     * ```
+     */
+    validate<S extends ValidationSchemas>(schemas: S, failure?: ValidationFailure): ControllerChain<ValidatedRequest<S>>;
 }
 
 /**
@@ -53,7 +74,7 @@ function create<T>(handler: Handler<T>): Controller<T> {
 export const $ = create as unknown as Dollar;
 
 /** Static members of `$`; generated status names must never collide with them. */
-export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect', 'isResult', 'error', 'HttpError', 'isHttpError', 'config'] as const;
+export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect', 'isResult', 'error', 'HttpError', 'isHttpError', 'config', 'guard', 'checkBefore', 'validate'] as const;
 
 const helpers: Record<string, unknown> = {};
 for (const { code, name } of STATUSES)
@@ -65,7 +86,19 @@ function config(options?: Partial<Config>): Readonly<Config> | Dollar {
     return $;
 }
 
-Object.assign($, helpers, { status: statusResult, redirect: redirectResult, isResult, error: createHttpError, isHttpError, config });
+const start = createChain();
+
+Object.assign($, helpers, {
+    status:         statusResult,
+    redirect:       redirectResult,
+    isResult,
+    error:          createHttpError,
+    isHttpError,
+    config,
+    guard:          start.guard,
+    checkBefore:    start.checkBefore,
+    validate:       start.validate
+});
 
 Object.defineProperties($, {
     $:          { value: $, enumerable: true },
