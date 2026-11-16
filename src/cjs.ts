@@ -15,5 +15,6 @@ export type { Config } from './config.js';
 export type { RunRequest, RunResult } from './run.js';
 export type { CookieEntry } from './response.js';
 export type { DownloadBody, FileBody, FileOptions, RenderBody, SendFileOptions } from './delivery.js';
+export type { StreamSource } from './stream.js';
 export type { ValidatedRequest, ValidationFailure, ValidationIssue, ValidationSchemas, ValidationTarget } from './types.js';
 export type { HttpError } from './error.js';

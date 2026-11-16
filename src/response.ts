@@ -1,5 +1,6 @@
 import type { CookieOptions, Response } from 'express';
 import { deliver, isDelivery } from './delivery.js';
+import { discard, isStream, pipeTo } from './stream.js';
 
 /** A header value accepted by Express. */
 export type HeaderValue = string | number | readonly string[];
@@ -86,8 +87,8 @@ export function mergeParts(base: ResponseParts, top: ResponseParts): ResponsePar
 export const NO_BODY_STATUSES = new Set([204, 205, 304]);
 
 /**
- * Writes the parts and `body` to the Express response. Resolves when a file, a download or a view
- * is sent, and rejects with Express's error (missing file, view error).
+ * Writes the parts and `body` to the Express response. Resolves when a file, a download, a view or
+ * a stream is sent, and rejects with Express's or the stream's error.
  */
 export async function send(res: Response, parts: ResponseParts, body: unknown): Promise<void> {
     res.status(parts.status ?? 200);
@@ -103,11 +104,15 @@ export async function send(res: Response, parts: ResponseParts, body: unknown): 
         res.type(parts.type);
 
     if (body === undefined || NO_BODY_STATUSES.has(parts.status ?? 200)) {
+        if (isStream(body))
+            discard(body);
         res.end();
         return;
     }
     if (isDelivery(body))
         return deliver(res, body);
+    if (isStream(body))
+        return pipeTo(res, body);
     if (typeof body === 'string' || Buffer.isBuffer(body)) {
         res.send(body);
         return;

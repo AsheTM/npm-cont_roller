@@ -6,6 +6,7 @@ import { getConfig, setConfig, type Config } from './config.js';
 import { createResult, isResult, redirectResult, statusResult, type Result, type ResultOptions } from './result.js';
 import { createController } from './controller.js';
 import { createChain } from './chain.js';
+import { streamResult, type StreamSource } from './stream.js';
 import { downloadResult, fileResult, renderResult, type DownloadBody, type FileBody, type FileOptions, type RenderBody } from './delivery.js';
 import { emptyState } from './settings.js';
 import { assertValidation } from './validation.js';
@@ -95,6 +96,17 @@ export interface Dollar {
      * ```
      */
     render(view: string, locals?: object, options?: ResultOptions): Result<RenderBody>;
+    /**
+     * Pipes a stream (Node readable or web `ReadableStream`) to the response. Same as `$.pipe()`.
+     * The status comes from the builder or ctx. Returning a stream from a handler does the same.
+     *
+     * ```ts
+     * $(() => $.stream(fs.createReadStream('/data/big.csv'), { type: 'text/csv' }))
+     * ```
+     */
+    stream<S extends StreamSource>(source: S, options?: ResultOptions): Result<S>;
+    /** Alias of `$.stream()`. */
+    pipe<S extends StreamSource>(source: S, options?: ResultOptions): Result<S>;
 }
 
 /**
@@ -120,7 +132,7 @@ function create<T>(handlerOrSchemas: Handler<T> | ValidationSchemas, handler?: H
 export const $ = create as unknown as Dollar;
 
 /** Static members of `$`; generated status names must never collide with them. */
-export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect', 'isResult', 'error', 'HttpError', 'isHttpError', 'config', 'guard', 'checkBefore', 'validate', 'file', 'sendFile', 'download', 'render'] as const;
+export const DOLLAR_MEMBERS = ['$', 'default', 'STATUSES', 'status', 'redirect', 'isResult', 'error', 'HttpError', 'isHttpError', 'config', 'guard', 'checkBefore', 'validate', 'file', 'sendFile', 'download', 'render', 'stream', 'pipe'] as const;
 
 const helpers: Record<string, unknown> = {};
 for (const { code, name } of STATUSES)
@@ -147,7 +159,9 @@ Object.assign($, helpers, {
     file:           fileResult,
     sendFile:       fileResult,
     download:       downloadResult,
-    render:         renderResult
+    render:         renderResult,
+    stream:         streamResult,
+    pipe:           streamResult
 });
 
 Object.defineProperties($, {
