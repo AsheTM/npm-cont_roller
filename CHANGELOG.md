@@ -3,7 +3,7 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [2.3.0] - Unreleased
+## [2.3.0] - 2026-11-16
 
 ### Added
 - `$.file()` (alias `$.sendFile()`), `$.download()` and `$.render()`: results sent with Express `res.sendFile()`, `res.download()` and `res.render()`. They keep the builder / ctx status; in `.run()` the body describes what would be sent (#79).
@@ -15,6 +15,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - A returned stream was serialized as JSON; it is now piped (#80).
 - Errors while sending (missing file, view error, stream error) follow `$.config`. In `respond` mode, a 4xx from Express is answered with its reason phrase, never the file path (#79).
 - An error thrown after the response started goes to `next(err)` (#81).
+
+### Pre-releases
+- `2.3.0-beta.0`: tested from npm with Express 4 and 5, CommonJS and ESM, TypeScript 5.0 to 6.0 (files, missing files in both error modes, downloads, views, Node and web streams, client disconnects, Server-Sent Events).
 
 ## [2.2.0] - 2026-11-16
 
